@@ -1,7 +1,5 @@
 import { GoogleGenAI } from '@google/genai';
 import mime from 'mime';
-import { writeFile } from 'fs/promises';
-import path from 'path';
 
 interface WavConversionOptions {
   numChannels: number;
@@ -91,26 +89,7 @@ class GeminiTTSService {
     }
   }
 
-  async generateAndSaveAudio(text: string, outputPath: string, voiceName: string = 'Kore'): Promise<string> {
-    const result = await this.generateAudio(text, voiceName);
-    
-    // Ensure the directory exists
-    const dir = path.dirname(outputPath);
-    await this.ensureDirectoryExists(dir);
-    
-    // Save the audio file
-    await writeFile(outputPath, result.audioBuffer);
-    
-    return outputPath;
-  }
 
-  private async ensureDirectoryExists(dir: string): Promise<void> {
-    try {
-      await import('fs/promises').then(fs => fs.mkdir(dir, { recursive: true }));
-    } catch {
-      // Directory might already exist, ignore error
-    }
-  }
 
   private convertToWav(rawData: string, mimeType: string): Buffer {
     const options = this.parseMimeType(mimeType);

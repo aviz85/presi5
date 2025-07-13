@@ -37,7 +37,7 @@ export default function HomeClient({ user, profile }: HomeClientProps) {
   const [showViewer, setShowViewer] = useState(false)
   const [audioFiles, setAudioFiles] = useState<AudioFile[]>([])
   const [isGeneratingAudio, setIsGeneratingAudio] = useState(false)
-  const [presentationId, setPresentationId] = useState<string>('')
+  const [, setPresentationId] = useState<string>('')
 
   const handleGenerate = async (prompt: string, model: string) => {
     setIsGenerating(true)

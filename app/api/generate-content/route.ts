@@ -1,6 +1,7 @@
 import { createClient } from '@/lib/supabase/server'
 import { generatePresentationContent } from '@/app/services/content-generator'
 import { NextRequest, NextResponse } from 'next/server'
+import type { Json } from '@/lib/supabase/types'
 
 export async function POST(request: NextRequest) {
   try {
@@ -79,7 +80,7 @@ export async function POST(request: NextRequest) {
       .insert({
         user_id: user.id,
         title: result.data.title,
-        content: result.data as any,
+        content: result.data as unknown as Json,
         audio_generated: false
       })
       .select()

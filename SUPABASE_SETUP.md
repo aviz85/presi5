@@ -2,7 +2,7 @@
 
 ## Overview
 
-Presi5 now includes full user authentication, presentation management, and credit system powered by Supabase. This guide will walk you through setting up your Supabase project and configuring the application.
+Presi5 now includes full user authentication, presentation management, credit system, and **Gemini TTS audio generation** powered by Supabase. This guide will walk you through setting up your Supabase project and configuring the application.
 
 ## 🚀 Quick Setup
 
@@ -45,6 +45,8 @@ GEMINI_API_KEY=your_google_gemini_api_key_here
 NEXT_PUBLIC_APP_URL=http://localhost:3000
 ```
 
+**Important**: Make sure you have a valid `GEMINI_API_KEY` for the audio generation feature to work.
+
 ### 4. Set Up Database Schema
 
 1. In your Supabase dashboard, go to **SQL Editor**
@@ -58,7 +60,7 @@ This will create:
 - **user_credits** table (credit usage tracking)
 - Row Level Security (RLS) policies
 - Database functions for credit management
-- Storage bucket for audio files
+- **Storage bucket for audio files** (`audio-files`)
 
 ### 5. Configure Authentication
 
@@ -106,11 +108,30 @@ npm run dev
 - **Usage History**: Detailed log of all credit transactions
 - **Refund Logic**: Credits refunded if presentation generation fails
 
-### 🎵 Audio File Management
-- **File Storage**: Audio files stored in organized directory structure
-- **Database Tracking**: Metadata stored in database for quick access
-- **User Isolation**: Users can only access audio for their presentations
-- **Cleanup Functions**: Built-in functions to manage old audio files
+### 🎵 Audio File Management with Gemini TTS
+- **Gemini TTS Integration**: Uses Google's Gemini 2.5 Pro TTS model for high-quality audio
+- **Supabase Storage**: Audio files stored securely in Supabase Storage bucket
+- **Automatic Generation**: Audio automatically generated for each presentation element
+- **User Isolation**: Audio files organized by user ID and presentation ID
+- **Public URLs**: Audio files accessible via public URLs for playback
+- **Multiple Voices**: Support for different voice options (Kore, Charon, Fenrir, etc.)
+
+#### Audio Generation Process:
+1. **Text Extraction**: Speech content extracted from presentation elements
+2. **TTS Generation**: Each speech element converted to audio using Gemini TTS
+3. **Storage Upload**: Audio files uploaded to `audio-files` bucket in Supabase Storage
+4. **Database Tracking**: Metadata stored in `audio_files` table
+5. **Public Access**: Files accessible via public URLs for presentation playback
+
+#### Audio File Structure:
+```
+audio-files/
+├── {user-id}/
+│   └── {presentation-id}/
+│       ├── slide-1-element-1.wav
+│       ├── slide-1-element-2.wav
+│       └── ...
+```
 
 ## 🗂️ Database Schema
 
@@ -127,14 +148,23 @@ npm run dev
 - Audio generation status tracking
 
 #### `audio_files`
-- Audio file metadata
+- Audio file metadata and paths
 - Element-level audio tracking
 - Duration and order information
+- Links to Supabase Storage files
 
 #### `user_credits`
 - Credit usage history
 - Action tracking (presentation_creation, etc.)
 - Audit trail for all credit transactions
+
+### Storage Buckets
+
+#### `audio-files`
+- **Public bucket** for audio file storage
+- Organized by user ID and presentation ID
+- Automatic cleanup policies via database CASCADE
+- Supports WAV audio format
 
 ### Functions
 
@@ -154,6 +184,13 @@ npm run dev
 - **Presentations**: Users can only CRUD their own presentations
 - **Audio Files**: Access limited to owner's presentations
 - **Credits**: Users can only view their own credit history
+- **Storage**: Audio files organized by user ID with access policies
+
+### Storage Security
+- **Upload Policy**: Only authenticated users can upload
+- **Access Policy**: Public read access for audio playback
+- **Update/Delete Policy**: Users can only modify their own files
+- **Path Structure**: User ID in path prevents cross-user access
 
 ### Authentication Middleware
 - Automatic session refresh
@@ -164,6 +201,30 @@ npm run dev
 - User authentication required for all content generation
 - Presentation ownership verification
 - Credit validation before processing
+- Audio file cleanup on failures
+
+## 🎵 Audio Generation Details
+
+### Gemini TTS Configuration
+- **Model**: `gemini-2.5-pro-preview-tts`
+- **Default Voice**: `Kore` (Hebrew-compatible)
+- **Output Format**: WAV with automatic conversion
+- **Quality**: High-quality speech synthesis
+
+### Voice Options
+Available voices for different languages and styles:
+- **Kore**: Default voice, works well with Hebrew and English
+- **Charon**: Alternative voice option
+- **Fenrir**: Alternative voice option  
+- **Aoede**: Alternative voice option
+- **Puck**: Alternative voice option
+
+### Audio Processing
+1. **Text Preparation**: Clean speech text from presentation elements
+2. **TTS Generation**: Stream-based generation for efficiency
+3. **Format Conversion**: Automatic WAV conversion if needed
+4. **Upload**: Direct upload to Supabase Storage
+5. **Metadata**: Store file info in database for quick access
 
 ## 🚀 Deployment Considerations
 
@@ -172,16 +233,19 @@ Update your production environment with:
 - Production Supabase URL and keys
 - Correct redirect URLs in Supabase settings
 - Secure API keys for OpenRouter and Gemini
+- **Valid Gemini API key for TTS functionality**
 
 ### Database Setup
 - Run the schema SQL in your production Supabase project
 - Ensure RLS is enabled
 - Test all functions and policies
+- **Verify storage bucket creation and policies**
 
 ### Storage Configuration
-- Configure storage bucket permissions
-- Set up CDN if needed for audio file delivery
-- Implement cleanup policies for old files
+- **Audio Bucket**: Ensure `audio-files` bucket is created and public
+- **Cleanup Policies**: Set up automatic cleanup for old files if needed
+- **CDN**: Consider CDN for audio file delivery in production
+- **Backup**: Regular backup of audio files if required
 
 ## 🔧 Troubleshooting
 
@@ -203,9 +267,33 @@ Update your production environment with:
 - Test policies in Supabase SQL editor
 
 **4. Audio generation failures**
-- Check Gemini API key is valid
-- Verify file system permissions
-- Check audio directory creation
+- **Check Gemini API key is valid and has TTS permissions**
+- Verify Supabase Storage bucket exists and is accessible
+- Check upload permissions and storage policies
+- Verify audio file cleanup on errors
+
+**5. Audio playback issues**
+- Check if audio files exist in Supabase Storage
+- Verify public URL generation
+- Test audio file accessibility
+- Check browser audio permissions
+
+### Audio-Specific Troubleshooting
+
+**1. "No audio data received from Gemini TTS"**
+- Verify `GEMINI_API_KEY` is set and valid
+- Check if Gemini TTS model is available in your region
+- Test with shorter text samples
+
+**2. "Failed to upload audio file"**
+- Check Supabase Storage bucket permissions
+- Verify bucket `audio-files` exists
+- Test storage policies in Supabase dashboard
+
+**3. Audio files not playing**
+- Check public URL generation
+- Verify browser supports WAV format
+- Test direct file access in browser
 
 ### Useful SQL Queries
 
@@ -226,6 +314,21 @@ ORDER BY created_at DESC;
 SELECT user_id, COUNT(*) as presentation_count 
 FROM presentations 
 GROUP BY user_id;
+
+-- Check audio files for a presentation
+SELECT af.*, p.title 
+FROM audio_files af
+JOIN presentations p ON af.presentation_id = p.id
+WHERE af.presentation_id = 'presentation-uuid-here';
+
+-- Check storage usage
+SELECT 
+  bucket_id,
+  COUNT(*) as file_count,
+  SUM(metadata->>'size')::bigint as total_size_bytes
+FROM storage.objects 
+WHERE bucket_id = 'audio-files'
+GROUP BY bucket_id;
 ```
 
 ## 📝 Next Steps
@@ -235,6 +338,9 @@ GROUP BY user_id;
 3. **Enhanced Analytics**: Add usage tracking and analytics
 4. **Admin Panel**: Create admin interface for user management
 5. **Email Templates**: Customize Supabase auth email templates
+6. **Audio Optimization**: Implement audio compression and caching
+7. **Voice Customization**: Add user voice preference settings
+8. **Batch Processing**: Optimize audio generation for large presentations
 
 ## 🆘 Support
 
@@ -243,8 +349,11 @@ If you encounter issues:
 2. Review Supabase logs in the dashboard
 3. Verify all environment variables
 4. Test database connections and permissions
+5. **Check Gemini API key validity and permissions**
+6. **Verify Supabase Storage bucket setup**
 
 For additional help, refer to:
 - [Supabase Documentation](https://supabase.com/docs)
 - [Next.js App Router Guide](https://nextjs.org/docs/app)
-- [Supabase Auth with Next.js](https://supabase.com/docs/guides/auth/auth-helpers/nextjs) 
+- [Google Gemini API Documentation](https://ai.google.dev/docs)
+- [Supabase Storage Guide](https://supabase.com/docs/guides/storage) 

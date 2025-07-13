@@ -42,9 +42,9 @@ export async function POST(request: NextRequest) {
 
     console.log('🎵 Generating audio for presentation:', presentationId)
 
-    // Generate audio files
+    // Generate audio files with Supabase Storage
     const audioGenerator = new AudioBatchGenerator()
-    const result = await audioGenerator.generatePresentationAudio(content, 'Kore')
+    const result = await audioGenerator.generatePresentationAudio(content, 'Kore', user.id)
 
     if (result.status === 'error') {
       return NextResponse.json(
@@ -57,7 +57,7 @@ export async function POST(request: NextRequest) {
     const audioFiles = result.audioFiles || []
     
     if (audioFiles.length > 0) {
-      const audioRecords = audioFiles.map((file: any) => ({
+      const audioRecords = audioFiles.map((file) => ({
         presentation_id: presentationId,
         file_name: file.audioPath.split('/').pop() || '',
         file_path: file.audioPath,
@@ -72,7 +72,17 @@ export async function POST(request: NextRequest) {
 
       if (audioInsertError) {
         console.error('Failed to save audio metadata:', audioInsertError)
-        // Continue anyway - the files are generated
+        // Try to clean up uploaded files if database insert fails
+        try {
+          await audioGenerator.deleteAudioFiles(presentationId)
+        } catch (cleanupError) {
+          console.error('Failed to cleanup audio files after database error:', cleanupError)
+        }
+        
+        return NextResponse.json(
+          { success: false, error: 'Failed to save audio metadata' },
+          { status: 500 }
+        )
       }
 
       // Mark presentation as having audio generated
@@ -122,36 +132,13 @@ export async function GET(request: NextRequest) {
       )
     }
 
-    // Verify the presentation belongs to the user and get audio files
-    const { data: audioFiles, error: audioError } = await supabase
-      .from('audio_files')
-      .select(`
-        *,
-        presentations!inner(user_id)
-      `)
-      .eq('presentation_id', presentationId)
-      .eq('presentations.user_id', user.id)
-      .order('element_order')
-
-    if (audioError) {
-      return NextResponse.json(
-        { success: false, error: 'Failed to fetch audio files' },
-        { status: 500 }
-      )
-    }
-
-    const formattedAudioFiles = audioFiles.map(file => ({
-      slideId: `slide-${Math.floor(file.element_order / 10) + 1}`, // Approximate slide mapping
-      elementId: file.element_id,
-      elementOrder: file.element_order,
-      audioPath: file.file_path,
-      audioUrl: `/audio/${presentationId}/${file.file_name}`,
-      duration: file.duration
-    }))
+    // Use the AudioBatchGenerator to get audio files with proper URLs
+    const audioGenerator = new AudioBatchGenerator()
+         const audioFiles = await audioGenerator.getAudioFiles(presentationId)
 
     return NextResponse.json({
       success: true,
-      audioFiles: formattedAudioFiles
+      audioFiles
     })
 
   } catch (error) {
