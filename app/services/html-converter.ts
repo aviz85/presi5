@@ -211,6 +211,32 @@ class HTMLConverterService {
       speechText: slide.speechElements.map(el => el.content).join(' ')
     }));
   }
+
+  // New method to extract speech content for each element separately
+  extractElementSpeechContent(htmlPresentation: HTMLPresentation): { slideId: string, elementId: string, speechText: string, order: number }[] {
+    const elementSpeech: { slideId: string, elementId: string, speechText: string, order: number }[] = [];
+    
+    htmlPresentation.slides.forEach(slide => {
+      // Combine all elements (visual + speech) and sort by order
+      const allElements = [
+        ...slide.elements.map(el => ({ ...el, elementType: 'visual' })),
+        ...slide.speechElements.map(el => ({ ...el, elementType: 'speech' }))
+      ].sort((a, b) => a.order - b.order);
+
+      allElements.forEach(element => {
+        if (element.elementType === 'speech') {
+          elementSpeech.push({
+            slideId: slide.id,
+            elementId: element.id,
+            speechText: element.content,
+            order: element.order
+          });
+        }
+      });
+    });
+
+    return elementSpeech;
+  }
 }
 
 export default HTMLConverterService; 

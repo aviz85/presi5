@@ -25,22 +25,21 @@ export interface SlideElement {
 /**
  * Content generation prompt template
  */
-const CONTENT_GENERATION_PROMPT = `You are an expert presentation content creator. Your task is to create engaging, well-structured presentation content based on the user's topic.
+const CONTENT_GENERATION_PROMPT = `Create a presentation with interleaved visual and speech elements. Each visual element must be followed by a speech element that explains it.
 
-Please generate a comprehensive presentation in the following JSON format:
-
+JSON Format:
 {
-  "title": "Main presentation title",
+  "title": "Presentation Title",
   "slides": [
     {
       "id": "slide-1",
-      "title": "Slide title",
-      "content": "Brief slide summary",
+      "title": "Slide Title",
+      "content": "Brief summary",
       "elements": [
         {
           "id": "element-1",
           "type": "title",
-          "content": "Main slide title",
+          "content": "Main Title",
           "animation": "animate-fade-in",
           "delay": 1000,
           "order": 1
@@ -48,34 +47,43 @@ Please generate a comprehensive presentation in the following JSON format:
         {
           "id": "element-2",
           "type": "speech",
-          "content": "Welcome to our presentation about [topic]. Let's explore this fascinating subject together.",
+          "content": "Welcome to our presentation. Today we'll explore this topic.",
           "animation": "",
-          "delay": 2000,
+          "delay": 0,
           "order": 2
         },
         {
           "id": "element-3",
           "type": "subtitle",
-          "content": "Key points we'll cover",
+          "content": "Key Points",
           "animation": "animate-slide-in-left",
-          "delay": 3000,
+          "delay": 1000,
           "order": 3
+        },
+        {
+          "id": "element-4",
+          "type": "speech",
+          "content": "Let's examine the main aspects of this subject.",
+          "animation": "",
+          "delay": 0,
+          "order": 4
         }
       ]
     }
   ]
 }
 
-Guidelines:
-1. Create 5-8 slides maximum
-2. Each slide should have 3-6 elements
-3. Use element types: title, subtitle, content, bullet-list, speech
-4. Available animations: animate-fade-in, animate-slide-in-left, animate-slide-in-right, animate-scale-up, animate-bounce-in
-5. Delays should be in milliseconds (1000ms = 1 second)
-6. Speech elements should contain natural narration text
-7. Bullet lists should be formatted as HTML unordered lists
-8. Keep content engaging and informative
-9. Order elements logically (1, 2, 3, etc.)
+RULES:
+1. Create 5-7 slides
+2. Pattern: Visual → Speech → Visual → Speech
+3. Visual types: title, subtitle, content, bullet-list
+4. Speech: Natural narration explaining the visual
+5. Animations: animate-fade-in, animate-slide-in-left, animate-slide-in-right, animate-scale-up, animate-bounce-in
+6. CRITICAL: Visual elements delay=1000, Speech elements delay=0 (ALWAYS)
+7. Speech animation MUST be empty string ""
+8. Order elements: 1, 2, 3, 4...
+9. Each slide: 4-6 elements (2-3 visual + 2-3 speech pairs)
+10. Bullet lists: Use <ul><li>text</li></ul> format
 
 Topic: `;
 

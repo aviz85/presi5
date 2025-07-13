@@ -6,6 +6,8 @@ import path from 'path';
 
 interface AudioFile {
   slideId: string;
+  elementId?: string;
+  elementOrder?: number;
   audioPath: string;
   audioUrl: string;
   duration?: number;
@@ -44,30 +46,32 @@ class AudioBatchGenerator {
 
       // Convert presentation to HTML format to extract speech content
       const htmlPresentation = this.htmlConverter.convertToHTML(presentationContent);
-      const speechContent = this.htmlConverter.extractSpeechContent(htmlPresentation);
+      const elementSpeechContent = this.htmlConverter.extractElementSpeechContent(htmlPresentation);
 
-      // Generate audio for each slide
-      for (let i = 0; i < speechContent.length; i++) {
-        const slideContent = speechContent[i];
+      // Generate audio for each speech element
+      for (let i = 0; i < elementSpeechContent.length; i++) {
+        const elementContent = elementSpeechContent[i];
         
-        if (slideContent.speechText.trim()) {
-          const fileName = `slide-${i + 1}.wav`;
+        if (elementContent.speechText.trim()) {
+          const fileName = `${elementContent.slideId}-${elementContent.elementId}.wav`;
           const audioPath = path.join(this.audioDir, presentationId, fileName);
           const audioUrl = `/audio/${presentationId}/${fileName}`;
 
           // Generate and save audio
           await this.ttsService.generateAndSaveAudio(
-            slideContent.speechText,
+            elementContent.speechText,
             audioPath,
             voiceName
           );
 
           // Estimate duration (rough calculation: 150 words per minute)
-          const wordCount = slideContent.speechText.split(/\s+/).length;
+          const wordCount = elementContent.speechText.split(/\s+/).length;
           const estimatedDuration = Math.max(2, (wordCount / 150) * 60); // minimum 2 seconds
 
           audioFiles.push({
-            slideId: slideContent.slideId,
+            slideId: elementContent.slideId,
+            elementId: elementContent.elementId,
+            elementOrder: elementContent.order,
             audioPath,
             audioUrl,
             duration: estimatedDuration

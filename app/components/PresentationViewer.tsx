@@ -18,6 +18,8 @@ export default function PresentationViewer({ presentationData, onClose, audioFil
   const [isAudioLoading, setIsAudioLoading] = useState(false);
   const [htmlPresentation, setHtmlPresentation] = useState<any>(null);
   const [speechContent, setSpeechContent] = useState<any[]>([]);
+  const [allElements, setAllElements] = useState<any[]>([]);
+  const [currentElementIndex, setCurrentElementIndex] = useState(0);
   const audioRef = useRef<HTMLAudioElement | null>(null);
 
   const htmlConverter = new HTMLConverterService();
@@ -30,20 +32,37 @@ export default function PresentationViewer({ presentationData, onClose, audioFil
     // Extract speech content for audio generation
     const speech = htmlConverter.extractSpeechContent(converted);
     setSpeechContent(speech);
+
+    // Create a combined list of all elements (visual + speech) for sequential display
+    const combinedElements: any[] = [];
+    converted.slides.forEach((slide: any) => {
+      // Combine visual and speech elements, sort by order
+      const slideElements = [
+        ...slide.elements.map((el: any) => ({ ...el, slideId: slide.id, elementType: 'visual' })),
+        ...slide.speechElements.map((el: any) => ({ ...el, slideId: slide.id, elementType: 'speech' }))
+      ].sort((a, b) => a.order - b.order);
+      
+      combinedElements.push(...slideElements);
+    });
+    
+    setAllElements(combinedElements);
   }, [presentationData]);
 
-  const playAudio = async (slideIndex: number) => {
+  const playAudioForElement = async (elementId: string) => {
     if (!audioFiles || audioFiles.length === 0) return;
     
     setIsAudioLoading(true);
     
     try {
-      const audioFile = audioFiles[slideIndex];
-      if (!audioFile) return;
+      const audioFile = audioFiles.find(file => file.elementId === elementId);
+      if (!audioFile) {
+        setIsAudioLoading(false);
+        return;
+      }
       
       if (audioRef.current) {
         audioRef.current.src = audioFile.audioUrl;
-        audioRef.current.play();
+        await audioRef.current.play();
       }
     } catch (error) {
       console.error('Audio playback error:', error);
@@ -70,9 +89,9 @@ export default function PresentationViewer({ presentationData, onClose, audioFil
     setIsPlaying(true);
     setCurrentSlide(0);
     setCurrentElement(0);
+    setCurrentElementIndex(0);
     
-    // Start with first slide's audio
-    await playAudio(0);
+    // The useEffect will handle starting with the first element
   };
 
   const stopPresentation = () => {
@@ -83,18 +102,42 @@ export default function PresentationViewer({ presentationData, onClose, audioFil
     }
   };
 
+  // Effect to handle element progression
+  useEffect(() => {
+    if (isPlaying && currentElementIndex < allElements.length) {
+      const currentEl = allElements[currentElementIndex];
+      if (currentEl) {
+        // Update current slide based on element's slide
+        const slideIndex = htmlPresentation?.slides.findIndex((slide: any) => slide.id === currentEl.slideId);
+        if (slideIndex !== -1 && slideIndex !== currentSlide) {
+          setCurrentSlide(slideIndex);
+        }
+
+        if (currentEl.elementType === 'visual') {
+          // For visual elements, automatically move to next after delay
+          const timer = setTimeout(() => {
+            setCurrentElementIndex(prev => prev + 1);
+          }, 2000); // 2 seconds delay for visual elements
+          return () => clearTimeout(timer);
+        } else if (currentEl.elementType === 'speech') {
+          // For speech elements, play audio (audio end will trigger next element)
+          playAudioForElement(currentEl.id);
+        }
+      }
+    } else if (isPlaying && currentElementIndex >= allElements.length) {
+      // End of presentation
+      setIsPlaying(false);
+    }
+  }, [currentElementIndex, isPlaying, allElements, htmlPresentation, currentSlide]);
+
   const handleAudioEnded = () => {
     if (isPlaying) {
-      // Move to next slide or stop if at the end
-      if (currentSlide < presentationData.slides.length - 1) {
-        const nextSlideIndex = currentSlide + 1;
-        setCurrentSlide(nextSlideIndex);
-        
-        // Play next slide's audio
-        playAudio(nextSlideIndex);
-      } else {
-        setIsPlaying(false);
-      }
+      // Move to next element after audio ends
+      setTimeout(() => {
+        if (isPlaying) {
+          setCurrentElementIndex(prev => prev + 1);
+        }
+      }, 500); // Small delay between elements
     }
   };
 
@@ -155,46 +198,50 @@ export default function PresentationViewer({ presentationData, onClose, audioFil
       <div className="flex-1 flex items-center justify-center p-8">
         <div className="w-full max-w-4xl h-full bg-white rounded-lg shadow-2xl p-12 overflow-hidden">
           <div className="h-full flex flex-col justify-center">
-            {currentSlideData.elements.map((element: any, index: number) => {
-              const isVisible = !isPlaying || index <= currentElement;
-              
-              return (
-                <div
-                  key={element.id}
-                  className={`mb-6 transition-all duration-500 ${
-                    isVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4'
-                  }`}
-                  style={{
-                    animationDelay: isPlaying ? `${element.animationDelay}ms` : '0ms'
-                  }}
-                >
-                  {element.type === 'title' && (
-                    <h1 className="text-4xl font-bold text-gray-800 text-center mb-8">
-                      {element.content}
-                    </h1>
-                  )}
-                  
-                  {element.type === 'subtitle' && (
-                    <h2 className="text-2xl font-semibold text-gray-700 mb-4">
-                      {element.content}
-                    </h2>
-                  )}
-                  
-                  {element.type === 'content' && (
-                    <p className="text-lg text-gray-600 leading-relaxed mb-4">
-                      {element.content}
-                    </p>
-                  )}
-                  
-                  {element.type === 'bullet-list' && (
-                    <div 
-                      className="text-lg text-gray-600 mb-4"
-                      dangerouslySetInnerHTML={{ __html: element.content }}
-                    />
-                  )}
-                </div>
-              );
-            })}
+            {allElements
+              .filter(el => el.elementType === 'visual' && el.slideId === htmlPresentation?.slides[currentSlide]?.id) // Only show visual elements from current slide
+              .map((element: any, index: number) => {
+                // Check if this element should be visible based on current progress
+                const elementGlobalIndex = allElements.findIndex(el => el.id === element.id);
+                const isVisible = !isPlaying || elementGlobalIndex <= currentElementIndex;
+                
+                return (
+                  <div
+                    key={element.id}
+                    className={`mb-6 transition-all duration-500 ${
+                      isVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4'
+                    } ${element.animationClass}`}
+                    style={{
+                      animationDelay: isPlaying ? `${element.animationDelay}ms` : '0ms'
+                    }}
+                  >
+                    {element.type === 'title' && (
+                      <h1 className="text-4xl font-bold text-gray-800 text-center mb-8">
+                        {element.content}
+                      </h1>
+                    )}
+                    
+                    {element.type === 'subtitle' && (
+                      <h2 className="text-2xl font-semibold text-gray-700 mb-4">
+                        {element.content}
+                      </h2>
+                    )}
+                    
+                    {element.type === 'content' && (
+                      <p className="text-lg text-gray-600 leading-relaxed mb-4">
+                        {element.content}
+                      </p>
+                    )}
+                    
+                    {element.type === 'bullet-list' && (
+                      <div 
+                        className="text-lg text-gray-600 mb-4"
+                        dangerouslySetInnerHTML={{ __html: element.content }}
+                      />
+                    )}
+                  </div>
+                );
+              })}
           </div>
         </div>
       </div>

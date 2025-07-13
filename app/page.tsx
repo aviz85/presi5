@@ -198,10 +198,11 @@ export default function Home() {
                   Generate New Presentation
                 </button>
                 <button
-                  className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
-                  disabled={true}
+                  onClick={() => setShowViewer(true)}
+                  disabled={isGeneratingAudio}
+                  className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-medium disabled:opacity-50 disabled:cursor-not-allowed"
                 >
-                  Start Presentation (Coming Soon)
+                  {isGeneratingAudio ? '⏳ Preparing Audio...' : '🎥 Start Presentation'}
                 </button>
               </div>
             </div>
