@@ -7,9 +7,11 @@ import HTMLConverterService from '../services/html-converter';
 interface PresentationViewerProps {
   presentationData: PresentationContent;
   onClose: () => void;
+  audioFiles?: any[];
+  presentationId?: string;
 }
 
-export default function PresentationViewer({ presentationData, onClose }: PresentationViewerProps) {
+export default function PresentationViewer({ presentationData, onClose, audioFiles = [], presentationId }: PresentationViewerProps) {
   const [currentSlide, setCurrentSlide] = useState(0);
   const [currentElement, setCurrentElement] = useState(0);
   const [isPlaying, setIsPlaying] = useState(false);
@@ -30,36 +32,21 @@ export default function PresentationViewer({ presentationData, onClose }: Presen
     setSpeechContent(speech);
   }, [presentationData]);
 
-  const playAudio = async (text: string) => {
-    if (!text.trim()) return;
+  const playAudio = async (slideIndex: number) => {
+    if (!audioFiles || audioFiles.length === 0) return;
     
     setIsAudioLoading(true);
     
     try {
-      const response = await fetch('/api/generate-audio', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          text,
-          voiceName: 'Kore'
-        }),
-      });
-
-      if (!response.ok) {
-        throw new Error('Failed to generate audio');
-      }
-
-      const audioBlob = await response.blob();
-      const audioUrl = URL.createObjectURL(audioBlob);
+      const audioFile = audioFiles[slideIndex];
+      if (!audioFile) return;
       
       if (audioRef.current) {
-        audioRef.current.src = audioUrl;
+        audioRef.current.src = audioFile.audioUrl;
         audioRef.current.play();
       }
     } catch (error) {
-      console.error('Audio generation error:', error);
+      console.error('Audio playback error:', error);
     } finally {
       setIsAudioLoading(false);
     }
@@ -84,11 +71,8 @@ export default function PresentationViewer({ presentationData, onClose }: Presen
     setCurrentSlide(0);
     setCurrentElement(0);
     
-    // Start with first slide's speech
-    const firstSlide = speechContent[0];
-    if (firstSlide && firstSlide.speechText) {
-      await playAudio(firstSlide.speechText);
-    }
+    // Start with first slide's audio
+    await playAudio(0);
   };
 
   const stopPresentation = () => {
@@ -107,10 +91,7 @@ export default function PresentationViewer({ presentationData, onClose }: Presen
         setCurrentSlide(nextSlideIndex);
         
         // Play next slide's audio
-        const nextSlideAudio = speechContent[nextSlideIndex];
-        if (nextSlideAudio && nextSlideAudio.speechText) {
-          playAudio(nextSlideAudio.speechText);
-        }
+        playAudio(nextSlideIndex);
       } else {
         setIsPlaying(false);
       }

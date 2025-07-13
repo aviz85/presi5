@@ -10,6 +10,9 @@ export default function Home() {
   const [error, setError] = useState<string>('');
   const [presentationData, setPresentationData] = useState<PresentationContent | null>(null);
   const [showViewer, setShowViewer] = useState(false);
+  const [isGeneratingAudio, setIsGeneratingAudio] = useState(false);
+  const [audioFiles, setAudioFiles] = useState<any[]>([]);
+  const [presentationId, setPresentationId] = useState<string>('');
 
   const handleGenerate = async (prompt: string, model: string) => {
     setIsGenerating(true);
@@ -37,6 +40,8 @@ export default function Home() {
 
       if (data.success) {
         setPresentationData(data.data);
+        // Auto-generate audio files after content generation
+        await generateAudioFiles(data.data);
       } else {
         throw new Error(data.error || 'Generation failed');
       }
@@ -46,6 +51,43 @@ export default function Home() {
       setError(err.message || 'An error occurred while generating the presentation');
     } finally {
       setIsGenerating(false);
+    }
+  };
+
+  const generateAudioFiles = async (presentationContent: PresentationContent) => {
+    setIsGeneratingAudio(true);
+    setError('');
+
+    try {
+      const response = await fetch('/api/generate-presentation-audio', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          presentationContent,
+          voiceName: 'Kore'
+        }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || 'Failed to generate audio files');
+      }
+
+      if (data.success) {
+        setAudioFiles(data.audioFiles);
+        setPresentationId(data.presentationId);
+      } else {
+        throw new Error(data.error || 'Audio generation failed');
+      }
+
+    } catch (err: any) {
+      console.error('Audio generation error:', err);
+      setError(err.message || 'An error occurred while generating audio files');
+    } finally {
+      setIsGeneratingAudio(false);
     }
   };
 
@@ -71,6 +113,8 @@ export default function Home() {
                 </svg>
                 <span className="text-green-700 text-sm">
                   Presentation &quot;{presentationData.title}&quot; generated successfully! ({presentationData.totalSlides} slides)
+                  {isGeneratingAudio && ' • Generating audio files...'}
+                  {audioFiles.length > 0 && ` • ${audioFiles.length} audio files ready`}
                 </span>
               </div>
             </div>
@@ -79,9 +123,10 @@ export default function Home() {
             <div className="max-w-4xl mx-auto flex justify-center space-x-4">
               <button
                 onClick={() => setShowViewer(true)}
-                className="px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-medium"
+                disabled={isGeneratingAudio}
+                className="px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-medium disabled:opacity-50 disabled:cursor-not-allowed"
               >
-                🎥 View Presentation
+                {isGeneratingAudio ? '⏳ Preparing Audio...' : '🎥 View Presentation'}
               </button>
               <button
                 onClick={() => {
@@ -165,13 +210,15 @@ export default function Home() {
       </div>
     </div>
 
-    {/* Presentation Viewer Modal */}
-    {showViewer && presentationData && (
-      <PresentationViewer
-        presentationData={presentationData}
-        onClose={() => setShowViewer(false)}
-      />
-    )}
+          {/* Presentation Viewer Modal */}
+      {showViewer && presentationData && (
+        <PresentationViewer
+          presentationData={presentationData}
+          onClose={() => setShowViewer(false)}
+          audioFiles={audioFiles}
+          presentationId={presentationId}
+        />
+      )}
   </>
   );
 }
