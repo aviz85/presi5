@@ -56,7 +56,7 @@ export default function WelcomePage() {
             </div>
             <h3 className="text-xl font-semibold text-gray-900 mb-2">Voice Narration</h3>
             <p className="text-gray-600">
-              Automatic voice generation using Google's Gemini TTS with multiple voice options for engaging presentations.
+              Automatic voice generation using Google&apos;s Gemini TTS with multiple voice options for engaging presentations.
             </p>
           </div>
 
