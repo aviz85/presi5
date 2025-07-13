@@ -48,7 +48,7 @@ export default function ProfileClient({ user, profile }: ProfileClientProps) {
         setMessage('Profile updated successfully!')
         router.refresh()
       }
-    } catch (err) {
+    } catch {
       setError('An unexpected error occurred')
     } finally {
       setLoading(false)

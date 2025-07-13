@@ -51,8 +51,12 @@ export default function RegisterPage() {
         setError(error.message)
       } else {
         setMessage('Check your email for the confirmation link!')
+        // Redirect to login after showing the message
+        setTimeout(() => {
+          router.push('/login')
+        }, 3000)
       }
-    } catch (err) {
+    } catch {
       setError('An unexpected error occurred')
     } finally {
       setLoading(false)
@@ -63,6 +67,14 @@ export default function RegisterPage() {
     <div className="min-h-screen flex items-center justify-center bg-gray-50 py-12 px-4 sm:px-6 lg:px-8">
       <div className="max-w-md w-full space-y-8">
         <div>
+          <div className="text-center mb-4">
+            <Link
+              href="/welcome"
+              className="text-indigo-600 hover:text-indigo-500 font-medium"
+            >
+              ← Back to Presi5
+            </Link>
+          </div>
           <h2 className="mt-6 text-center text-3xl font-extrabold text-gray-900">
             Create your account
           </h2>
