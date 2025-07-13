@@ -87,7 +87,7 @@ export default function InputInterface({ onGenerate, isGenerating, error }: Inpu
             id="prompt"
             value={prompt}
             onChange={handlePromptChange}
-            placeholder="Describe your presentation topic in detail. For example: 'The impact of artificial intelligence on modern healthcare, including benefits, challenges, and future prospects'"
+            placeholder="Describe your presentation topic in detail. For example: &quot;The impact of artificial intelligence on modern healthcare, including benefits, challenges, and future prospects&quot;"
             className="w-full h-32 px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none text-gray-700 placeholder-gray-400"
             disabled={isGenerating}
             maxLength={1000}
