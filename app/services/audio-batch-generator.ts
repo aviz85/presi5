@@ -3,6 +3,7 @@ import { PresentationContent } from './content-generator';
 import HTMLConverterService from './html-converter';
 import { writeFile, mkdir } from 'fs/promises';
 import path from 'path';
+import fs from 'fs';
 
 interface AudioFile {
   slideId: string;
@@ -111,8 +112,12 @@ class AudioBatchGenerator {
   async getAudioFiles(presentationId: string): Promise<AudioFile[]> {
     try {
       const metadataPath = path.join(this.audioDir, presentationId, 'metadata.json');
-      const metadata = await import(metadataPath);
-      return metadata.audioFiles || [];
+      if (fs.existsSync(metadataPath)) {
+        const metadataContent = fs.readFileSync(metadataPath, 'utf-8');
+        const metadata = JSON.parse(metadataContent);
+        return metadata.audioFiles || [];
+      }
+      return [];
     } catch (error) {
       console.error('Error loading audio metadata:', error);
       return [];

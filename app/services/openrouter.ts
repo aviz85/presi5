@@ -36,7 +36,7 @@ export interface OpenRouterError {
 export async function generateContent(
   prompt: string,
   systemPrompt: string,
-  model: string = 'qwen/qwen3-8b:free'
+  model: string = 'qwen/qwen-2.5-72b-instruct'
 ): Promise<OpenRouterResponse | OpenRouterError> {
   try {
     if (!process.env.OPENROUTER_API_KEY) {
@@ -47,29 +47,33 @@ export async function generateContent(
       };
     }
 
+    console.log(`🔄 Attempting content generation with model: ${model}`);
+
     const response = await openai.chat.completions.create({
       model,
       messages: [
         { role: 'system', content: systemPrompt },
         { role: 'user', content: prompt }
       ],
-      temperature: 0.7,
       max_tokens: 4000,
+      temperature: 0.7,
+      stream: false
     });
 
-    const content = response.choices[0]?.message?.content;
-    
-    if (!content) {
+    const choice = response.choices[0];
+    if (!choice || !choice.message?.content) {
+      console.error(`❌ Empty response from model: ${model}`);
       return {
         error: 'No content generated',
         code: 'EMPTY_RESPONSE',
-        details: 'The AI model returned an empty response'
+        details: `The AI model ${model} did not generate any content`
       };
     }
 
+    console.log(`✅ Content generated successfully with model: ${model}`);
     return {
-      content,
-      model,
+      content: choice.message.content,
+      model: response.model || model,
       usage: response.usage ? {
         prompt_tokens: response.usage.prompt_tokens,
         completion_tokens: response.usage.completion_tokens,
@@ -77,13 +81,15 @@ export async function generateContent(
       } : undefined
     };
 
-  } catch (error: any) {
-    console.error('OpenRouter API Error:', error);
+  } catch (error: unknown) {
+    console.error(`❌ OpenRouter API error with model ${model}:`, error);
+    
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
     
     return {
-      error: error.message || 'Failed to generate content',
-      code: error.code || 'API_ERROR',
-      details: error.response?.data?.error?.message || 'Unknown error occurred'
+      error: 'OpenRouter API request failed',
+      code: 'API_ERROR',
+      details: `Model ${model}: ${errorMessage}`
     };
   }
 }
@@ -99,7 +105,7 @@ export async function generateContent(
 export async function generateStreamingContent(
   prompt: string,
   systemPrompt: string,
-  model: string = 'qwen/qwen3-8b:free',
+  model: string = 'qwen/qwen-2.5-72b-instruct',
   onChunk: (chunk: string) => void
 ): Promise<OpenRouterResponse | OpenRouterError> {
   try {
@@ -117,41 +123,60 @@ export async function generateStreamingContent(
         { role: 'system', content: systemPrompt },
         { role: 'user', content: prompt }
       ],
-      temperature: 0.7,
       max_tokens: 4000,
-      stream: true,
+      temperature: 0.7,
+      stream: true
     });
 
-    let fullContent = '';
+    let content = '';
     
     for await (const chunk of stream) {
-      const content = chunk.choices[0]?.delta?.content;
-      if (content) {
-        fullContent += content;
-        onChunk(content);
+      const delta = chunk.choices[0]?.delta?.content;
+      if (delta) {
+        content += delta;
+        onChunk(delta);
       }
     }
 
+    if (!content) {
+      return {
+        error: 'No content generated',
+        code: 'EMPTY_RESPONSE',
+        details: 'The AI model did not generate any content'
+      };
+    }
+
     return {
-      content: fullContent,
-      model
+      content,
+      model,
+      usage: undefined // Usage not available in streaming mode
     };
 
-  } catch (error: any) {
-    console.error('OpenRouter Streaming Error:', error);
+  } catch (error: unknown) {
+    console.error('OpenRouter streaming error:', error);
+    
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
     
     return {
-      error: error.message || 'Failed to generate streaming content',
-      code: error.code || 'STREAMING_ERROR',
-      details: error.response?.data?.error?.message || 'Unknown streaming error occurred'
+      error: 'OpenRouter streaming request failed',
+      code: 'STREAMING_ERROR',
+      details: errorMessage
     };
   }
 }
 
-/**
- * Get available models from OpenRouter
- * @returns Promise with available models list
- */
+interface ModelData {
+  id: string;
+  pricing?: {
+    prompt: string;
+    completion: string;
+  };
+}
+
+interface ModelsResponse {
+  data?: ModelData[];
+}
+
 export async function getAvailableModels(): Promise<string[]> {
   try {
     const response = await fetch('https://openrouter.ai/api/v1/models');
@@ -160,8 +185,8 @@ export async function getAvailableModels(): Promise<string[]> {
       throw new Error(`HTTP error! status: ${response.status}`);
     }
 
-    const data = await response.json();
-    return data.data?.map((model: any) => model.id) || [];
+    const data: ModelsResponse = await response.json();
+    return data.data?.map((model: ModelData) => model.id) || [];
   } catch (error) {
     console.error('Error fetching models:', error);
     return getDefaultModels();
@@ -176,10 +201,10 @@ export async function getFreeModels(): Promise<string[]> {
       throw new Error(`HTTP error! status: ${response.status}`);
     }
 
-    const data = await response.json();
-    const freeModels = data.data?.filter((model: any) => 
+    const data: ModelsResponse = await response.json();
+    const freeModels = data.data?.filter((model: ModelData) => 
       model.pricing?.prompt === '0' && model.pricing?.completion === '0'
-    ).map((model: any) => model.id) || [];
+    ).map((model: ModelData) => model.id) || [];
     
     return freeModels.length > 0 ? freeModels : getDefaultModels();
   } catch (error) {
@@ -191,12 +216,9 @@ export async function getFreeModels(): Promise<string[]> {
 export function getDefaultModels(): string[] {
   return [
     'qwen/qwen3-8b:free',
-    'qwen/qwen3-4b:free',
-    'qwen/qwen3-14b:free',
-    'qwen/qwen3-30b-a3b:free',
-    'qwen/qwq-32b:free',
     'deepseek/deepseek-r1-0528:free',
-    'mistralai/mistral-small-3.2-24b-instruct:free',
-    'google/gemma-3n-e2b-it:free'
+    'meta-llama/llama-3.2-3b-instruct:free',
+    'microsoft/phi-3-mini-128k-instruct:free',
+    'huggingface/zephyr-7b-beta:free'
   ];
 } 

@@ -9,7 +9,7 @@ interface HTMLSlide {
 
 interface HTMLElement {
   id: string;
-  type: 'title' | 'subtitle' | 'content' | 'bullet-list';
+  type: 'title' | 'subtitle' | 'content' | 'bullet-list' | 'bullet-point';
   content: string;
   animationClass: string;
   animationDelay: number;
@@ -72,7 +72,7 @@ class HTMLConverterService {
       } else {
         elements.push({
           id: `slide-${slideIndex}-element-${elementIndex}`,
-          type: element.type as 'title' | 'subtitle' | 'content' | 'bullet-list',
+          type: element.type as 'title' | 'subtitle' | 'content' | 'bullet-list' | 'bullet-point',
           content: this.formatContent(element),
           animationClass: element.animation,
           animationDelay: element.delay,
@@ -153,7 +153,9 @@ class HTMLConverterService {
       case 'content':
         return 'p';
       case 'bullet-list':
-        return 'ul';
+        return 'div';
+      case 'bullet-point':
+        return 'div';
       default:
         return 'div';
     }

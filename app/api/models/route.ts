@@ -38,17 +38,13 @@ export async function GET(request: NextRequest) {
       default: getDefaultModels()
     });
 
-  } catch (error: any) {
-    console.error('Models API error:', error);
+  } catch (error: unknown) {
+    console.error('Error fetching models:', error);
+    
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
     
     return NextResponse.json(
-      { 
-        success: false,
-        error: 'Failed to fetch models',
-        code: 'MODELS_ERROR',
-        details: error.message || 'An error occurred while fetching models',
-        fallback: getDefaultModels()
-      },
+      { error: 'Failed to fetch models', details: errorMessage },
       { status: 500 }
     );
   }

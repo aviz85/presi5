@@ -77,11 +77,8 @@ export default function InputInterface({ onGenerate, isGenerating, error }: Inpu
       <form onSubmit={handleSubmit} className="space-y-6">
         {/* Main Input Area */}
         <div className="space-y-2">
-          <label 
-            htmlFor="prompt" 
-            className="block text-sm font-medium text-gray-700"
-          >
-            Presentation Topic
+          <label htmlFor="prompt" className="block text-sm font-medium text-gray-700 mb-2">
+            What would you like to present? (e.g., &quot;Machine Learning in Healthcare&quot;)
           </label>
           <textarea
             id="prompt"
@@ -201,7 +198,7 @@ export default function InputInterface({ onGenerate, isGenerating, error }: Inpu
         <h3 className="text-sm font-semibold text-blue-800 mb-2">How it works:</h3>
         <ol className="text-sm text-blue-700 space-y-1">
           <li>1. Enter a detailed description of your presentation topic</li>
-          <li>2. Click "Generate Presentation" to create AI-powered content</li>
+          <li>2. Click &quot;Generate Presentation&quot; to create AI-powered content</li>
           <li>3. Watch as your presentation is built with animations and narration</li>
           <li>4. Navigate through slides with automatic progression</li>
         </ol>

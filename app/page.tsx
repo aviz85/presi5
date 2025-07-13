@@ -5,59 +5,71 @@ import InputInterface from './components/InputInterface';
 import PresentationViewer from './components/PresentationViewer';
 import { PresentationContent } from './services/content-generator';
 
+interface AudioResponse {
+  success: boolean;
+  audioFiles?: AudioFile[];
+  error?: string;
+}
+
+interface AudioFile {
+  slideId: string;
+  elementId?: string;
+  elementOrder?: number;
+  audioPath: string;
+  audioUrl: string;
+  duration?: number;
+}
+
 export default function Home() {
   const [isGenerating, setIsGenerating] = useState(false);
-  const [error, setError] = useState<string>('');
   const [presentationData, setPresentationData] = useState<PresentationContent | null>(null);
+  const [error, setError] = useState<string>('');
   const [showViewer, setShowViewer] = useState(false);
+  const [audioFiles, setAudioFiles] = useState<AudioFile[]>([]);
   const [isGeneratingAudio, setIsGeneratingAudio] = useState(false);
-  const [audioFiles, setAudioFiles] = useState<any[]>([]);
-  const [presentationId, setPresentationId] = useState<string>('');
 
   const handleGenerate = async (prompt: string, model: string) => {
     setIsGenerating(true);
     setError('');
     setPresentationData(null);
-
+    setAudioFiles([]);
+    
     try {
+      console.log('🎯 Starting generation with prompt:', prompt.substring(0, 50) + '...');
+      
       const response = await fetch('/api/generate-content', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({
-          prompt,
-          model,
-          streaming: false
-        }),
+        body: JSON.stringify({ prompt, model }),
       });
 
       const data = await response.json();
-
-      if (!response.ok) {
-        throw new Error(data.error || 'Failed to generate presentation');
-      }
-
+      
       if (data.success) {
+        console.log('✅ Content generated successfully');
         setPresentationData(data.data);
-        // Auto-generate audio files after content generation
-        await generateAudioFiles(data.data);
+        
+        // Generate audio files
+        await generateAudio(data.data.title.replace(/\s+/g, '-').toLowerCase());
       } else {
         throw new Error(data.error || 'Generation failed');
       }
-
-    } catch (err: any) {
-      console.error('Generation error:', err);
-      setError(err.message || 'An error occurred while generating the presentation');
+    } catch (error: unknown) {
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
+      console.error('❌ Generation error:', errorMessage);
+      setError(errorMessage);
     } finally {
       setIsGenerating(false);
     }
   };
 
-  const generateAudioFiles = async (presentationContent: PresentationContent) => {
+  const generateAudio = async (presentationId: string) => {
+    if (!presentationData) return;
+    
     setIsGeneratingAudio(true);
-    setError('');
-
+    
     try {
       const response = await fetch('/api/generate-presentation-audio', {
         method: 'POST',
@@ -65,27 +77,22 @@ export default function Home() {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          presentationContent,
-          voiceName: 'Kore'
+          presentationContent: presentationData,
+          voiceName: 'Kore',
+          presentationId
         }),
       });
 
-      const data = await response.json();
-
-      if (!response.ok) {
-        throw new Error(data.error || 'Failed to generate audio files');
-      }
-
-      if (data.success) {
-        setAudioFiles(data.audioFiles);
-        setPresentationId(data.presentationId);
+      const result: AudioResponse = await response.json();
+      
+      if (result.success && result.audioFiles) {
+        setAudioFiles(result.audioFiles);
       } else {
-        throw new Error(data.error || 'Audio generation failed');
+        setError(result.error || 'Failed to generate audio');
       }
-
-    } catch (err: any) {
-      console.error('Audio generation error:', err);
-      setError(err.message || 'An error occurred while generating audio files');
+    } catch (error: unknown) {
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
+      setError('Audio generation failed: ' + errorMessage);
     } finally {
       setIsGeneratingAudio(false);
     }
@@ -217,7 +224,7 @@ export default function Home() {
           presentationData={presentationData}
           onClose={() => setShowViewer(false)}
           audioFiles={audioFiles}
-          presentationId={presentationId}
+          // presentationId={presentationId} // This line was removed from the new_code, so it's removed here.
         />
       )}
   </>
