@@ -14,8 +14,8 @@ interface AudioFile {
 }
 
 interface PresentationViewerProps {
-  presentationData: PresentationContent;
-  onClose: () => void;
+  content: PresentationContent;
+  onBack: () => void;
   audioFiles?: AudioFile[];
 }
 
@@ -53,7 +53,7 @@ interface HTMLPresentation {
   estimatedDuration: number;
 }
 
-export default function PresentationViewer({ presentationData, onClose, audioFiles = [] }: PresentationViewerProps) {
+export default function PresentationViewer({ content, onBack, audioFiles = [] }: PresentationViewerProps) {
   const [currentSlide, setCurrentSlide] = useState(0);
   const [isPlaying, setIsPlaying] = useState(false);
   const [isAudioLoading, setIsAudioLoading] = useState(false);
@@ -66,7 +66,7 @@ export default function PresentationViewer({ presentationData, onClose, audioFil
   // Convert presentation to HTML format
   useEffect(() => {
     const htmlConverter = new HTMLConverterService();
-    const converted = htmlConverter.convertToHTML(presentationData);
+    const converted = htmlConverter.convertToHTML(content);
     setHtmlPresentation(converted);
 
     // Create combined array of all elements (visual + speech) sorted by order
@@ -105,7 +105,7 @@ export default function PresentationViewer({ presentationData, onClose, audioFil
     // Sort by order
     combined.sort((a, b) => a.order - b.order);
     setAllElements(combined);
-  }, [presentationData]);
+  }, [content]);
 
   // Handle element progression during presentation
   useEffect(() => {
@@ -201,7 +201,7 @@ export default function PresentationViewer({ presentationData, onClose, audioFil
       <div className="flex justify-between items-center p-4 bg-black bg-opacity-20">
         <div className="flex items-center space-x-4">
           <button
-            onClick={onClose}
+            onClick={onBack}
             className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors"
           >
             Close

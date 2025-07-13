@@ -3,9 +3,10 @@
 import { useState, useEffect } from 'react';
 
 interface InputInterfaceProps {
-  onGenerate: (prompt: string, model: string) => void;
+  onGenerate: (prompt: string, model: string) => Promise<void>;
   isGenerating: boolean;
   error?: string;
+  disabled?: boolean;
 }
 
 interface ModelOption {
@@ -13,7 +14,7 @@ interface ModelOption {
   label: string;
 }
 
-export default function InputInterface({ onGenerate, isGenerating, error }: InputInterfaceProps) {
+export default function InputInterface({ onGenerate, isGenerating, error, disabled = false }: InputInterfaceProps) {
   const [prompt, setPrompt] = useState('');
   const [deepResearch, setDeepResearch] = useState(false);
   const [selectedModel, setSelectedModel] = useState('qwen/qwen3-8b:free');
@@ -171,9 +172,9 @@ export default function InputInterface({ onGenerate, isGenerating, error }: Inpu
         <div className="flex justify-center">
           <button
             type="submit"
-            disabled={!prompt.trim() || isGenerating}
-            className={`px-8 py-3 rounded-lg font-semibold text-white transition-all duration-200 ${
-              !prompt.trim() || isGenerating
+            disabled={!prompt.trim() || isGenerating || disabled}
+                          className={`px-8 py-3 rounded-lg font-semibold text-white transition-all duration-200 ${
+                !prompt.trim() || isGenerating || disabled
                 ? 'bg-gray-400 cursor-not-allowed'
                 : 'bg-blue-600 hover:bg-blue-700 hover:shadow-lg transform hover:scale-105'
             }`}

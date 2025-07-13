@@ -1,8 +1,8 @@
 import { createClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
-import HomeClient from './home-client'
+import ProfileClient from './profile-client'
 
-export default async function Home() {
+export default async function ProfilePage() {
   const supabase = await createClient()
 
   const {
@@ -13,12 +13,12 @@ export default async function Home() {
     redirect('/login')
   }
 
-  // Get user profile to check credits
+  // Get user profile
   const { data: profile } = await supabase
     .from('profiles')
     .select('*')
     .eq('id', user.id)
     .single()
 
-  return <HomeClient user={user} profile={profile} />
-}
+  return <ProfileClient user={user} profile={profile} />
+} 
