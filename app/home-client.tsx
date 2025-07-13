@@ -1,8 +1,10 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { User } from '@supabase/supabase-js'
 import { Database } from '@/lib/supabase/types'
+import { createClient } from '@/lib/supabase/client'
+import { useRouter } from 'next/navigation'
 import InputInterface from './components/InputInterface'
 import PresentationViewer from './components/PresentationViewer'
 import { PresentationContent } from './services/content-generator'
@@ -38,6 +40,38 @@ export default function HomeClient({ user, profile }: HomeClientProps) {
   const [audioFiles, setAudioFiles] = useState<AudioFile[]>([])
   const [isGeneratingAudio, setIsGeneratingAudio] = useState(false)
   const [, setPresentationId] = useState<string>('')
+  const [showMobileMenu, setShowMobileMenu] = useState(false)
+  
+  const router = useRouter()
+  const supabase = createClient()
+  const mobileMenuRef = useRef<HTMLDivElement>(null)
+
+  // Close mobile menu when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (mobileMenuRef.current && !mobileMenuRef.current.contains(event.target as Node)) {
+        setShowMobileMenu(false)
+      }
+    }
+
+    if (showMobileMenu) {
+      document.addEventListener('mousedown', handleClickOutside)
+    }
+
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside)
+    }
+  }, [showMobileMenu])
+
+  const handleSignOut = async () => {
+    try {
+      await supabase.auth.signOut()
+      router.push('/welcome')
+      router.refresh()
+    } catch (error) {
+      console.error('Error signing out:', error)
+    }
+  }
 
   const handleGenerate = async (prompt: string, model: string) => {
     setIsGenerating(true)
@@ -122,25 +156,111 @@ export default function HomeClient({ user, profile }: HomeClientProps) {
   return (
     <main className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100">
       {/* Header */}
-      <header className="bg-white shadow-sm">
+      <header className="bg-white shadow-sm border-b border-gray-200">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center py-4">
             <div className="flex items-center">
-              <h1 className="text-2xl font-bold text-gray-900">Presi5</h1>
+              <h1 className="text-2xl font-bold text-indigo-600">Presi5</h1>
+              <span className="ml-2 text-sm text-gray-500">AI Presentation Generator</span>
             </div>
-            <div className="flex items-center space-x-4">
-              <div className="text-sm text-gray-600">
-                <span className="font-medium">Credits: {creditsRemaining}</span>
+            <div className="flex items-center space-x-6">
+              {/* Credits Display */}
+              <div className="flex items-center space-x-2">
+                <div className="flex items-center bg-indigo-50 px-3 py-1 rounded-full">
+                  <svg className="w-4 h-4 text-indigo-600 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1" />
+                  </svg>
+                  <span className="text-sm font-semibold text-indigo-700">
+                    {creditsRemaining} Credits
+                  </span>
+                </div>
               </div>
-              <div className="text-sm text-gray-600">
-                {profile?.full_name || user.email}
+
+              {/* User Info */}
+              <div className="flex items-center space-x-3">
+                <div className="flex items-center space-x-2">
+                  <div className="w-8 h-8 bg-indigo-100 rounded-full flex items-center justify-center">
+                    <svg className="w-4 h-4 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                    </svg>
+                  </div>
+                  <div className="hidden md:block">
+                    <div className="text-sm font-medium text-gray-900">
+                      {profile?.full_name || 'User'}
+                    </div>
+                    <div className="text-xs text-gray-500">
+                      {user.email}
+                    </div>
+                  </div>
+                </div>
               </div>
-              <Link
-                href="/dashboard"
-                className="bg-gray-600 hover:bg-gray-700 text-white px-4 py-2 rounded-md text-sm font-medium"
-              >
-                Dashboard
-              </Link>
+
+              {/* Navigation Buttons */}
+              <div className="flex items-center space-x-2">
+                {/* Desktop Navigation */}
+                <div className="hidden sm:flex items-center space-x-2">
+                  <Link
+                    href="/dashboard"
+                    className="bg-gray-100 hover:bg-gray-200 text-gray-700 px-3 py-2 rounded-md text-sm font-medium transition-colors"
+                  >
+                    Dashboard
+                  </Link>
+                  <Link
+                    href="/profile"
+                    className="bg-gray-100 hover:bg-gray-200 text-gray-700 px-3 py-2 rounded-md text-sm font-medium transition-colors"
+                  >
+                    Profile
+                  </Link>
+                  <button
+                    onClick={handleSignOut}
+                    className="bg-red-100 hover:bg-red-200 text-red-700 px-3 py-2 rounded-md text-sm font-medium transition-colors"
+                  >
+                    Logout
+                  </button>
+                </div>
+
+                {/* Mobile Menu */}
+                <div className="sm:hidden relative" ref={mobileMenuRef}>
+                  <button
+                    onClick={() => setShowMobileMenu(!showMobileMenu)}
+                    className="bg-gray-100 hover:bg-gray-200 text-gray-700 p-2 rounded-md transition-colors"
+                  >
+                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
+                    </svg>
+                  </button>
+
+                  {showMobileMenu && (
+                    <div className="absolute right-0 mt-2 w-48 bg-white rounded-md shadow-lg border border-gray-200 z-50">
+                      <div className="py-1">
+                        <Link
+                          href="/dashboard"
+                          className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                          onClick={() => setShowMobileMenu(false)}
+                        >
+                          Dashboard
+                        </Link>
+                        <Link
+                          href="/profile"
+                          className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                          onClick={() => setShowMobileMenu(false)}
+                        >
+                          Profile
+                        </Link>
+                        <button
+                          onClick={() => {
+                            setShowMobileMenu(false)
+                            handleSignOut()
+                          }}
+                          className="block w-full text-left px-4 py-2 text-sm text-red-700 hover:bg-red-50"
+                        >
+                          Logout
+                        </button>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </div>
             </div>
           </div>
         </div>
