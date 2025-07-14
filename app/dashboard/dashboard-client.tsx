@@ -6,9 +6,20 @@ import { useRouter } from 'next/navigation'
 import { User } from '@supabase/supabase-js'
 import { Database } from '@/lib/supabase/types'
 import Link from 'next/link'
+import PresentationViewer from '../components/PresentationViewer'
+import { PresentationContent } from '../services/content-generator'
 
 type Profile = Database['public']['Tables']['profiles']['Row']
 type Presentation = Database['public']['Tables']['presentations']['Row']
+
+interface AudioFile {
+  slideId: string
+  elementId?: string
+  elementOrder?: number
+  audioPath: string
+  audioUrl: string
+  duration?: number
+}
 
 interface DashboardClientProps {
   user: User
@@ -18,6 +29,12 @@ interface DashboardClientProps {
 
 export default function DashboardClient({ user, profile, presentations }: DashboardClientProps) {
   const [loading, setLoading] = useState(false)
+  const [viewingPresentation, setViewingPresentation] = useState<Presentation | null>(null)
+  const [presentationContent, setPresentationContent] = useState<PresentationContent | null>(null)
+  const [audioFiles, setAudioFiles] = useState<AudioFile[]>([])
+  const [loadingAudio, setLoadingAudio] = useState(false)
+  const [loadingPresentationId, setLoadingPresentationId] = useState<string | null>(null)
+  const [isPresentationMode, setIsPresentationMode] = useState(false)
   const router = useRouter()
   const supabase = createClient()
 
@@ -28,7 +45,78 @@ export default function DashboardClient({ user, profile, presentations }: Dashbo
     router.refresh()
   }
 
+  const handleViewPresentation = async (presentation: Presentation) => {
+    try {
+      setLoadingPresentationId(presentation.id)
+      setViewingPresentation(presentation)
+      setPresentationContent(presentation.content as unknown as PresentationContent)
+      setIsPresentationMode(false) // View mode - no auto-play
+      
+      // Load audio files if available
+      if (presentation.audio_generated) {
+        setLoadingAudio(true)
+        const response = await fetch(`/api/generate-presentation-audio?presentationId=${presentation.id}`)
+        const result = await response.json()
+        
+        if (result.success && result.audioFiles) {
+          setAudioFiles(result.audioFiles)
+        }
+        setLoadingAudio(false)
+      }
+    } catch (error) {
+      console.error('Error loading presentation:', error)
+      setLoadingAudio(false)
+    } finally {
+      setLoadingPresentationId(null)
+    }
+  }
+
+  const handlePresentPresentation = async (presentation: Presentation) => {
+    try {
+      setLoadingPresentationId(presentation.id)
+      setViewingPresentation(presentation)
+      setPresentationContent(presentation.content as unknown as PresentationContent)
+      setIsPresentationMode(true) // Presentation mode - will auto-start
+      
+      // Load audio files if available
+      if (presentation.audio_generated) {
+        setLoadingAudio(true)
+        const response = await fetch(`/api/generate-presentation-audio?presentationId=${presentation.id}`)
+        const result = await response.json()
+        
+        if (result.success && result.audioFiles) {
+          setAudioFiles(result.audioFiles)
+        }
+        setLoadingAudio(false)
+      }
+    } catch (error) {
+      console.error('Error loading presentation:', error)
+      setLoadingAudio(false)
+    } finally {
+      setLoadingPresentationId(null)
+    }
+  }
+
+  const handleClosePresentation = () => {
+    setViewingPresentation(null)
+    setPresentationContent(null)
+    setAudioFiles([])
+    setIsPresentationMode(false)
+  }
+
   const creditsRemaining = profile?.credits || 0
+
+  // If viewing a presentation, show the PresentationViewer
+  if (viewingPresentation && presentationContent) {
+    return (
+      <PresentationViewer 
+        content={presentationContent}
+        onBack={handleClosePresentation}
+        audioFiles={audioFiles}
+        autoStart={isPresentationMode}
+      />
+    )
+  }
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -190,6 +278,53 @@ export default function DashboardClient({ user, profile, presentations }: Dashbo
                               Last updated {new Date(presentation.updated_at || presentation.created_at).toLocaleDateString()}
                             </p>
                           </div>
+                        </div>
+                        <div className="mt-4 flex space-x-3">
+                          <button
+                            onClick={() => handleViewPresentation(presentation)}
+                            disabled={loadingPresentationId === presentation.id}
+                            className="inline-flex items-center px-3 py-2 border border-gray-300 shadow-sm text-sm leading-4 font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 disabled:opacity-50"
+                          >
+                            {loadingPresentationId === presentation.id ? (
+                              <>
+                                <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-gray-500" fill="none" viewBox="0 0 24 24">
+                                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                                </svg>
+                                Loading...
+                              </>
+                            ) : (
+                              <>
+                                <svg className="-ml-1 mr-2 h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                                </svg>
+                                View
+                              </>
+                            )}
+                          </button>
+                          <button
+                            onClick={() => handlePresentPresentation(presentation)}
+                            disabled={loadingPresentationId === presentation.id}
+                            className="inline-flex items-center px-3 py-2 border border-transparent text-sm leading-4 font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 disabled:opacity-50"
+                          >
+                            {loadingPresentationId === presentation.id ? (
+                              <>
+                                <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-white" fill="none" viewBox="0 0 24 24">
+                                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                                </svg>
+                                Starting...
+                              </>
+                            ) : (
+                              <>
+                                <svg className="-ml-1 mr-2 h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14.828 14.828a4 4 0 01-5.656 0M9 10h1m4 0h1m-6 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                </svg>
+                                Present
+                              </>
+                            )}
+                          </button>
                         </div>
                       </div>
                     </li>
