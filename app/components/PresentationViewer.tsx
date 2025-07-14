@@ -238,17 +238,38 @@ export default function PresentationViewer({ content, onBack, audioFiles = [], a
             // Try to play the audio
             await audioRef.current.play();
             
-            // Set up fallback timer in case audio doesn't end properly
-            const maxAudioDuration = Math.max(
-              (audioFile.duration || 0) * 1000 + 2000, // Use duration from database + 2s buffer
-              10000 // Minimum 10 seconds fallback
-            );
+            // Enhanced fallback timer logic with better duration detection
+            let fallbackDuration = 15000; // Default 15 seconds for safety
             
-            console.log(`⏱️ Setting fallback timer for ${maxAudioDuration}ms for element ${currentElement.id}`);
+            // First, try to get duration from database
+            if (audioFile.duration && audioFile.duration > 0) {
+              fallbackDuration = Math.max(audioFile.duration * 1000 + 3000, 15000); // DB duration + 3s buffer, min 15s
+              console.log(`📊 Using database duration: ${audioFile.duration}s + 3s buffer = ${fallbackDuration}ms`);
+            } else {
+              // If no database duration, try to get it from the audio element itself
+              const checkAudioDuration = () => {
+                if (audioRef.current && audioRef.current.duration && !isNaN(audioRef.current.duration)) {
+                  const detectedDuration = audioRef.current.duration * 1000 + 3000; // Detected duration + 3s buffer
+                  fallbackDuration = Math.max(detectedDuration, 15000); // Minimum 15 seconds
+                  console.log(`🎵 Detected audio duration: ${audioRef.current.duration}s + 3s buffer = ${fallbackDuration}ms`);
+                } else {
+                  console.log(`⚠️ Could not detect audio duration for ${currentElement.id}, using ${fallbackDuration}ms fallback`);
+                }
+              };
+              
+              // Check duration immediately
+              checkAudioDuration();
+              
+              // Also check after a short delay in case duration loads later
+              setTimeout(checkAudioDuration, 500);
+              setTimeout(checkAudioDuration, 1000);
+            }
+            
+            console.log(`⏱️ Setting fallback timer for ${fallbackDuration}ms for element ${currentElement.id}`);
             fallbackTimerRef.current = setTimeout(() => {
-              console.log(`⏰ Fallback timer triggered for audio element ${currentElement.id}`);
+              console.log(`⏰ Fallback timer triggered for audio element ${currentElement.id} after ${fallbackDuration}ms`);
               setCurrentSlideElementIndex(prev => prev + 1);
-            }, maxAudioDuration);
+            }, fallbackDuration);
             
             // Clean up event listeners after a delay
             setTimeout(() => {
