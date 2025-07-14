@@ -115,11 +115,6 @@ export default function HomeClient({ user, profile }: HomeClientProps) {
     }
   }
 
-  const generateAudio = async (presentationId: string) => {
-    if (!presentationData) return
-    await generateAudioWithData(presentationId, presentationData)
-  }
-
   const generateAudioWithData = async (presentationId: string, content: PresentationContent) => {
     setIsGeneratingAudio(true)
     console.log('🎵 Starting audio generation for presentation:', presentationId)

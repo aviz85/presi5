@@ -272,36 +272,6 @@ function parseContentResponse(content: string): PresentationContent | null {
   }
 }
 
-function validatePresentationContent(data: Record<string, unknown>): PresentationContent {
-  // This function is no longer needed for Markdown parsing but keeping for compatibility
-  if (!data.title || typeof data.title !== 'string') {
-    throw new Error('Invalid or missing title');
-  }
-
-  if (!Array.isArray(data.slides)) {
-    throw new Error('Invalid or missing slides array');
-  }
-
-  const slides: PresentationSlide[] = data.slides.map((slide: any, index: number) => {
-    if (!slide || typeof slide !== 'object') {
-      throw new Error(`Invalid slide at index ${index}`);
-    }
-
-    return {
-      id: slide.id || `slide-${index}`,
-      title: slide.title || `Slide ${index + 1}`,
-      content: slide.content || '',
-      elements: Array.isArray(slide.elements) ? slide.elements : []
-    };
-  });
-
-  return {
-    title: data.title,
-    slides,
-    totalSlides: slides.length
-  };
-}
-
 export function createSamplePresentation(): PresentationContent {
   return {
     title: "Sample AI Presentation",

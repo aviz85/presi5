@@ -199,7 +199,7 @@ export class MarkdownParser {
       }
       
       // Clean content
-      let cleanContent = contentLine
+      const cleanContent = contentLine
         .replace(/^#{1,6}\s*/, '') // Remove markdown headers
         .replace(/^[•\-*]\s*/, '') // Remove bullet markers
         .replace(/\*\*(.*?)\*\*/g, '$1') // Remove bold formatting **text** -> text
