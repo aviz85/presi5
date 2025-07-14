@@ -59,7 +59,7 @@ class HTMLConverterService {
     const elements: HTMLElement[] = [];
     const speechElements: HTMLElement[] = [];
 
-    slide.elements.forEach((element, elementIndex) => {
+    slide.elements.forEach((element) => {
       if (element.type === 'speech') {
         // Use the same ID format as MarkdownParser
         speechElements.push({

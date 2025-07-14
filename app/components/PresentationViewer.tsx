@@ -64,7 +64,6 @@ export default function PresentationViewer({ content, onBack, audioFiles = [], a
   const [currentSlide, setCurrentSlide] = useState(0);
   const [isPlaying, setIsPlaying] = useState(false);
   const [isAudioLoading, setIsAudioLoading] = useState(false);
-  const [currentElementIndex, setCurrentElementIndex] = useState(-1);
   const [currentSlideElementIndex, setCurrentSlideElementIndex] = useState(-1);
   const [slideElements, setSlideElements] = useState<SlideElements[]>([]);
   const [htmlPresentation, setHtmlPresentation] = useState<HTMLPresentation | null>(null);
@@ -222,7 +221,7 @@ export default function PresentationViewer({ content, onBack, audioFiles = [], a
             const onLoadStart = () => console.log(`📥 Audio loading started for ${currentElement.id}`);
             const onCanPlay = () => console.log(`✅ Audio can play for ${currentElement.id}`);
             const onPlay = () => console.log(`▶️ Audio started playing for ${currentElement.id}`);
-            const onError = (e: any) => {
+            const onError = (e: ErrorEvent) => {
               console.error(`❌ Audio error for ${currentElement.id}:`, e);
               // Continue to next element on error
               setTimeout(() => {

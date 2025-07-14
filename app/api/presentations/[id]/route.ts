@@ -3,7 +3,7 @@ import { NextRequest, NextResponse } from 'next/server'
 
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const supabase = await createClient()
@@ -16,13 +16,13 @@ export async function GET(
       )
     }
 
-    const presentationId = params.id
+    const { id } = await params;
 
     // Get presentation with markdown content
     const { data: presentation, error: fetchError } = await supabase
       .from('presentations')
       .select('*')
-      .eq('id', presentationId)
+      .eq('id', id)
       .eq('user_id', user.id) // Ensure user owns the presentation
       .single()
 

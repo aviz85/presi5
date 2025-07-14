@@ -32,7 +32,6 @@ export default function DashboardClient({ user, profile, presentations }: Dashbo
   const [viewingPresentation, setViewingPresentation] = useState<Presentation | null>(null)
   const [presentationContent, setPresentationContent] = useState<PresentationContent | null>(null)
   const [audioFiles, setAudioFiles] = useState<AudioFile[]>([])
-  const [loadingAudio, setLoadingAudio] = useState(false)
   const [loadingPresentationId, setLoadingPresentationId] = useState<string | null>(null)
   const [isPresentationMode, setIsPresentationMode] = useState(false)
   const router = useRouter()
@@ -54,18 +53,15 @@ export default function DashboardClient({ user, profile, presentations }: Dashbo
       
       // Load audio files if available
       if (presentation.audio_generated) {
-        setLoadingAudio(true)
         const response = await fetch(`/api/generate-presentation-audio?presentationId=${presentation.id}`)
         const result = await response.json()
         
         if (result.success && result.audioFiles) {
           setAudioFiles(result.audioFiles)
         }
-        setLoadingAudio(false)
       }
     } catch (error) {
       console.error('Error loading presentation:', error)
-      setLoadingAudio(false)
     } finally {
       setLoadingPresentationId(null)
     }
@@ -80,18 +76,15 @@ export default function DashboardClient({ user, profile, presentations }: Dashbo
       
       // Load audio files if available
       if (presentation.audio_generated) {
-        setLoadingAudio(true)
         const response = await fetch(`/api/generate-presentation-audio?presentationId=${presentation.id}`)
         const result = await response.json()
         
         if (result.success && result.audioFiles) {
           setAudioFiles(result.audioFiles)
         }
-        setLoadingAudio(false)
       }
     } catch (error) {
       console.error('Error loading presentation:', error)
-      setLoadingAudio(false)
     } finally {
       setLoadingPresentationId(null)
     }

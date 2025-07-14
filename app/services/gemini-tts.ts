@@ -125,7 +125,7 @@ class GeminiTTSService {
 
   private parseMimeType(mimeType: string): WavConversionOptions {
     const [fileType, ...params] = mimeType.split(';').map(s => s.trim());
-    const [_, format] = fileType.split('/');
+    const [, format] = fileType.split('/');
 
     const options: Partial<WavConversionOptions> = {
       numChannels: 1,
