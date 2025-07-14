@@ -1,4 +1,5 @@
-import { generateContent, generateStreamingContent, OpenRouterError } from './openrouter';
+import { generateContent, generateStreamingContent, OpenRouterError } from './openrouter'
+import MarkdownParser from './markdown-parser';
 
 export interface PresentationContent {
   title: string;
@@ -25,109 +26,58 @@ export interface SlideElement {
 /**
  * Content generation prompt template
  */
-const CONTENT_GENERATION_PROMPT = `You are an AI presentation generator. Create a structured presentation with interleaved visual and speech elements. Each visual element must be followed by a speech element that explains it.
+const CONTENT_GENERATION_PROMPT = `You are an AI presentation generator. Create a structured presentation in Markdown format.
 
-For bullet points, create separate "bullet-point" elements - each bullet point should be its own element with its own speech explanation.
+Create 4-7 slides with clear sections for content and speech narration. Use this EXACT format:
 
-Return ONLY valid JSON in this exact format:
-{
-  "title": "Presentation Title",
-  "slides": [
-    {
-      "id": "slide-1",
-      "title": "Slide Title",
-      "content": "Brief summary",
-      "elements": [
-        {
-          "id": "element-1",
-          "type": "title",
-          "content": "Main Title",
-          "animation": "fade-in",
-          "delay": 1000,
-          "order": 1
-        },
-        {
-          "id": "element-2",
-          "type": "speech",
-          "content": "Welcome to our presentation. Today we'll explore this topic.",
-          "animation": "",
-          "delay": 0,
-          "order": 2
-        },
-        {
-          "id": "element-3",
-          "type": "subtitle",
-          "content": "Key Benefits",
-          "animation": "slide-in-left",
-          "delay": 1000,
-          "order": 3
-        },
-        {
-          "id": "element-4",
-          "type": "speech",
-          "content": "Let's examine the main benefits of this approach.",
-          "animation": "",
-          "delay": 0,
-          "order": 4
-        },
-        {
-          "id": "element-5",
-          "type": "bullet-point",
-          "content": "• Improved efficiency and productivity",
-          "animation": "scale-up",
-          "delay": 1000,
-          "order": 5
-        },
-        {
-          "id": "element-6",
-          "type": "speech",
-          "content": "First, we see significant improvements in efficiency and productivity.",
-          "animation": "",
-          "delay": 0,
-          "order": 6
-        },
-        {
-          "id": "element-7",
-          "type": "bullet-point",
-          "content": "• Cost reduction and better ROI",
-          "animation": "scale-up",
-          "delay": 1000,
-          "order": 7
-        },
-        {
-          "id": "element-8",
-          "type": "speech",
-          "content": "Additionally, organizations experience substantial cost reductions and better return on investment.",
-          "animation": "",
-          "delay": 0,
-          "order": 8
-        }
-      ]
-    }
-  ]
-}
+# [Presentation Title]
 
-CRITICAL RULES:
-1. Create 5-7 slides total
-2. STRICT Pattern: Visual → Speech → Visual → Speech (alternate every element)
-3. Visual types: title, subtitle, content, bullet-point
-4. Each bullet-point is separate with its own speech explanation
-5. Speech: Natural narration explaining the visual element
-6. Animations: fade-in, slide-in-left, slide-in-right, scale-up, bounce-in
-7. Visual elements: delay=1000ms, Speech elements: delay=0ms
-8. Return ONLY valid JSON, no markdown, no explanation
-9. Ensure all content is in English unless specifically requested otherwise`;
+## [Slide 1 Title]
+- First key point about the topic
+- Second important point
+- Third relevant detail
+
+**Speech:** Welcome to our presentation on [topic]. Today we'll explore [brief overview]. Let's start by examining [first point]. [Explain second point]. Finally, [explain third point].
+
+## [Slide 2 Title]
+### [Subtitle if needed]
+Main content paragraph explaining the concept in detail.
+
+• Bullet point with specific benefit
+• Another bullet point with example
+• Third bullet point with evidence
+
+**Speech:** Now let's dive deeper into [slide topic]. [Explain the main concept]. The key benefits include [explain bullets]. This is important because [reasoning].
+
+## [Slide 3 Title]
+Content can be paragraphs, bullet points, or subtitles.
+
+**Speech:** Moving on to [topic], we need to understand [explanation]. This connects to our previous points by [connection].
+
+Continue this pattern for 4-7 slides total.
+
+RULES:
+- Use # for presentation title (only once)
+- Use ## for slide titles
+- Use ### for subtitles within slides
+- Use • or - for bullet points
+- Include **Speech:** sections with natural narration
+- Keep speech conversational and explanatory
+- Make content visual-friendly (short, clear points)
+- Ensure speech explains and expands on visual content
+
+Return ONLY the Markdown content, no code blocks or explanations.`;
 
 /**
  * Generate presentation content from user prompt
  * @param prompt - User's presentation topic
  * @param model - OpenRouter model to use
- * @returns Promise with structured presentation content
+ * @returns Promise with structured presentation content and original markdown
  */
 export async function generatePresentationContent(
   prompt: string,
   model: string = 'qwen/qwen-2.5-72b-instruct'
-): Promise<{ success: true; data: PresentationContent } | { success: false; error: OpenRouterError }> {
+): Promise<{ success: true; data: PresentationContent; originalMarkdown: string } | { success: false; error: OpenRouterError }> {
   try {
     // Validate input prompt
     if (!prompt || prompt.trim().length === 0) {
@@ -156,53 +106,46 @@ export async function generatePresentationContent(
       model
     );
 
-    // If the requested model fails, try fallback models
+    // If the requested model fails, try with a fallback
     if ('error' in response) {
-      console.warn(`⚠️ Model ${model} failed, trying fallback models...`);
+      console.warn(`⚠️ Model ${model} failed, trying fallback model...`);
       
-      const fallbackModels = [
-        'qwen/qwen-2.5-72b-instruct',
-        'deepseek/deepseek-r1-distill-llama-70b',
-        'microsoft/wizardlm-2-8x22b',
-        'qwen/qwen-2.5-7b-instruct',
-        'meta-llama/llama-3.1-8b-instruct:free'
-      ];
-
-      for (const fallbackModel of fallbackModels) {
-        if (fallbackModel === model) continue; // Skip if it's the same model we already tried
-        
-        console.log(`🔄 Trying fallback model: ${fallbackModel}`);
+      const fallbackModel = 'qwen/qwen-2.5-72b-instruct';
+      if (model !== fallbackModel) {
         response = await generateContent(
           userPrompt,
           CONTENT_GENERATION_PROMPT,
           fallbackModel
         );
-
-        if (!('error' in response)) {
-          console.log(`✅ Success with fallback model: ${fallbackModel}`);
-          break;
-        }
+      }
+      
+      // If fallback also fails, return the error
+      if ('error' in response) {
+        return { success: false, error: response };
       }
     }
 
-    if ('error' in response) {
-      return { success: false, error: response };
-    }
-
+    // Store the original markdown content
+    const originalMarkdown = response.content;
+    
     const presentationData = parseContentResponse(response.content);
     
     if (!presentationData) {
       return {
         success: false,
         error: {
-          error: 'Failed to parse content',
+          error: 'Failed to parse AI response',
           code: 'PARSE_ERROR',
-          details: 'The AI response could not be parsed as valid JSON'
+          details: 'The AI response could not be parsed as valid presentation content'
         }
       };
     }
-    
-    return { success: true, data: presentationData };
+
+    return { 
+      success: true, 
+      data: presentationData,
+      originalMarkdown: originalMarkdown
+    };
 
   } catch (error: unknown) {
     console.error('Content generation error:', error);
@@ -270,7 +213,7 @@ export async function generateStreamingPresentationContent(
         error: {
           error: 'Failed to parse streaming content',
           code: 'PARSE_ERROR',
-          details: 'The AI streaming response could not be parsed as valid JSON'
+          details: 'The AI streaming response could not be parsed as valid presentation content'
         }
       };
     }
@@ -292,58 +235,45 @@ export async function generateStreamingPresentationContent(
 }
 
 /**
- * Parse AI response into structured presentation content
+ * Parse AI response content into structured presentation data
  * @param content - Raw AI response content
  * @returns Parsed presentation content or null if parsing fails
  */
 function parseContentResponse(content: string): PresentationContent | null {
   try {
-    console.log('📝 Parsing AI response...');
+    console.log('📝 Parsing Markdown response...');
     
-    // Remove any markdown code blocks and extract JSON
-    let jsonStr = content.trim();
+    // Remove any markdown code blocks if present
+    let markdownContent = content.trim();
     
     // Remove markdown code block markers if present
-    if (jsonStr.startsWith('```json')) {
-      jsonStr = jsonStr.replace(/^```json\s*/, '').replace(/\s*```$/, '');
-    } else if (jsonStr.startsWith('```')) {
-      jsonStr = jsonStr.replace(/^```\s*/, '').replace(/\s*```$/, '');
+    if (markdownContent.startsWith('```markdown')) {
+      markdownContent = markdownContent.replace(/^```markdown\s*/, '').replace(/\s*```$/, '');
+    } else if (markdownContent.startsWith('```')) {
+      markdownContent = markdownContent.replace(/^```\s*/, '').replace(/\s*```$/, '');
     }
 
-    // Remove any leading/trailing text that's not JSON
-    const jsonMatch = jsonStr.match(/\{[\s\S]*\}/);
-    if (jsonMatch) {
-      jsonStr = jsonMatch[0];
+    // Use the markdown parser
+    const markdownParser = new MarkdownParser();
+    const presentationData = markdownParser.parseMarkdownToPresentation(markdownContent);
+    
+    if (!presentationData) {
+      throw new Error('Failed to parse Markdown content');
     }
-
-    // Clean up common JSON formatting issues
-    jsonStr = jsonStr
-      .replace(/,\s*}/g, '}')  // Remove trailing commas
-      .replace(/,\s*]/g, ']')  // Remove trailing commas in arrays
-      .replace(/\n/g, ' ')     // Replace newlines with spaces
-      .replace(/\s+/g, ' ');   // Normalize whitespace
-
-    console.log('🔍 Attempting to parse JSON...');
     
-    // Parse the JSON
-    const data = JSON.parse(jsonStr) as Record<string, unknown>;
+    console.log(`📊 Parsed presentation: ${presentationData.title} (${presentationData.totalSlides} slides)`);
     
-    console.log('✅ JSON parsed successfully');
-    
-    // Validate the parsed data
-    const validatedData = validatePresentationContent(data);
-    console.log(`📊 Validated presentation: ${validatedData.title} (${validatedData.totalSlides} slides)`);
-    
-    return validatedData;
+    return presentationData;
 
   } catch (error: unknown) {
-    console.error('❌ Content parsing error:', error);
-    console.error('📄 Raw content preview:', content.substring(0, 200) + '...');
+    console.error('❌ Markdown parsing error:', error);
+    console.log('📄 Raw content preview:', content.substring(0, 200) + '...');
     return null;
   }
 }
 
 function validatePresentationContent(data: Record<string, unknown>): PresentationContent {
+  // This function is no longer needed for Markdown parsing but keeping for compatibility
   if (!data.title || typeof data.title !== 'string') {
     throw new Error('Invalid or missing title');
   }
@@ -352,43 +282,16 @@ function validatePresentationContent(data: Record<string, unknown>): Presentatio
     throw new Error('Invalid or missing slides array');
   }
 
-  const slides = data.slides.map((slide: unknown, index: number) => {
-    if (typeof slide !== 'object' || slide === null) {
+  const slides: PresentationSlide[] = data.slides.map((slide: any, index: number) => {
+    if (!slide || typeof slide !== 'object') {
       throw new Error(`Invalid slide at index ${index}`);
     }
 
-    const slideObj = slide as Record<string, unknown>;
-    
-    if (!slideObj.title || typeof slideObj.title !== 'string') {
-      throw new Error(`Invalid slide title at index ${index}`);
-    }
-
-    if (!Array.isArray(slideObj.elements)) {
-      throw new Error(`Invalid elements array at slide ${index}`);
-    }
-
-    const elements = slideObj.elements.map((element: unknown, elemIndex: number) => {
-      if (typeof element !== 'object' || element === null) {
-        throw new Error(`Invalid element at slide ${index}, element ${elemIndex}`);
-      }
-
-      const elemObj = element as Record<string, unknown>;
-      
-      return {
-        id: (elemObj.id as string) || `slide-${index}-element-${elemIndex}`,
-        type: elemObj.type as SlideElement['type'],
-        content: elemObj.content as string,
-        animation: elemObj.animation as string,
-        delay: Number(elemObj.delay) || 0,
-        order: Number(elemObj.order) || elemIndex
-      };
-    });
-
     return {
-      id: (slideObj.id as string) || `slide-${index}`,
-      title: slideObj.title,
-      content: (slideObj.content as string) || '',
-      elements
+      id: slide.id || `slide-${index}`,
+      title: slide.title || `Slide ${index + 1}`,
+      content: slide.content || '',
+      elements: Array.isArray(slide.elements) ? slide.elements : []
     };
   });
 
@@ -399,108 +302,34 @@ function validatePresentationContent(data: Record<string, unknown>): Presentatio
   };
 }
 
-/**
- * Create a sample presentation for testing
- * @returns Sample presentation content
- */
 export function createSamplePresentation(): PresentationContent {
   return {
-    title: "AI-Powered Presentation Generation",
-    totalSlides: 3,
+    title: "Sample AI Presentation",
     slides: [
       {
         id: "slide-1",
         title: "Welcome",
-        content: "Introduction to AI presentation generation",
+        content: "Introduction to our topic",
         elements: [
           {
-            id: "element-1-1",
+            id: "element-1",
             type: "title",
-            content: "AI-Powered Presentation Generation",
-            animation: "animate-fade-in",
+            content: "Sample AI Presentation",
+            animation: "fade-in",
             delay: 1000,
             order: 1
           },
           {
-            id: "element-1-2",
+            id: "element-2",
             type: "speech",
-            content: "Welcome to our presentation about AI-powered presentation generation. Today we'll explore how artificial intelligence can transform the way we create and deliver presentations.",
+            content: "Welcome to our sample presentation. This demonstrates the AI-powered presentation generation system.",
             animation: "",
-            delay: 2000,
+            delay: 0,
             order: 2
-          },
-          {
-            id: "element-1-3",
-            type: "subtitle",
-            content: "Revolutionizing Content Creation",
-            animation: "animate-slide-in-left",
-            delay: 3000,
-            order: 3
-          }
-        ]
-      },
-      {
-        id: "slide-2",
-        title: "Key Benefits",
-        content: "Main advantages of AI presentation generation",
-        elements: [
-          {
-            id: "element-2-1",
-            type: "title",
-            content: "Key Benefits",
-            animation: "animate-scale-up",
-            delay: 1000,
-            order: 1
-          },
-          {
-            id: "element-2-2",
-            type: "speech",
-            content: "AI presentation generation offers numerous advantages for content creators and presenters.",
-            animation: "",
-            delay: 2000,
-            order: 2
-          },
-          {
-            id: "element-2-3",
-            type: "bullet-list",
-            content: "<ul><li>Automated content generation</li><li>Consistent formatting and design</li><li>Time-saving workflow</li><li>Enhanced creativity and ideas</li></ul>",
-            animation: "animate-slide-in-right",
-            delay: 3000,
-            order: 3
-          }
-        ]
-      },
-      {
-        id: "slide-3",
-        title: "Thank You",
-        content: "Conclusion and next steps",
-        elements: [
-          {
-            id: "element-3-1",
-            type: "title",
-            content: "Thank You",
-            animation: "animate-bounce-in",
-            delay: 1000,
-            order: 1
-          },
-          {
-            id: "element-3-2",
-            type: "speech",
-            content: "Thank you for your attention. We hope this presentation has shown you the potential of AI-powered presentation generation.",
-            animation: "",
-            delay: 2000,
-            order: 2
-          },
-          {
-            id: "element-3-3",
-            type: "content",
-            content: "Questions & Discussion",
-            animation: "animate-fade-in",
-            delay: 3000,
-            order: 3
           }
         ]
       }
-    ]
+    ],
+    totalSlides: 1
   };
 } 

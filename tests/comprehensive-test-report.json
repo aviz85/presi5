@@ -1,0 +1,60 @@
+{
+  "summary": {
+    "timestamp": "2025-07-14T00:01:42.714Z",
+    "totalSuites": 3,
+    "passed": 2,
+    "failed": 1,
+    "criticalFailed": 0,
+    "passRate": 66.66666666666666
+  },
+  "environment": {
+    "nodeVersion": "v23.9.0",
+    "platform": "darwin",
+    "arch": "arm64",
+    "cwd": "/Users/aviz/presi5",
+    "env": {
+      "hasGeminiKey": false,
+      "hasOpenRouterKey": false,
+      "hasSupabaseUrl": false,
+      "hasSupabaseKey": false
+    }
+  },
+  "results": [
+    {
+      "suite": "Environment Setup",
+      "script": "test-environment.js",
+      "success": true,
+      "exitCode": 0,
+      "output": "\u001b[35m🧪 Presi5 Environment Test Suite\u001b[0m\n\u001b[35m==================================================\u001b[0m\n\u001b[36m\n🔍 Testing Environment Variables\u001b[0m\n\u001b[36m==================================================\u001b[0m\n\u001b[32m✅ .env.local file found\u001b[0m\n\u001b[32m✅ OPENROUTER_API_KEY: Set (OpenRouter API for content generation)\u001b[0m\n\u001b[32m✅ GEMINI_API_KEY: Set (Google Gemini API for audio generation)\u001b[0m\n\u001b[32m✅ NEXT_PUBLIC_SUPABASE_URL: Set (Supabase project URL)\u001b[0m\n\u001b[32m✅ NEXT_PUBLIC_SUPABASE_ANON_KEY: Set (Supabase anonymous key)\u001b[0m\n\u001b[33m⚠️  SUPABASE_SERVICE_ROLE_KEY: Not set (Supabase service role key (admin))\u001b[0m\n\u001b[32m✅ NEXT_PUBLIC_APP_URL: Set (Application URL)\u001b[0m\n\u001b[36m\n🔗 Testing Supabase Connection\u001b[0m\n\u001b[36m==================================================\u001b[0m\n\u001b[32m✅ Supabase connection successful\u001b[0m\n\u001b[36m\n🎵 Testing Gemini TTS API\u001b[0m\n\u001b[36m==================================================\u001b[0m\n\u001b[34mℹ️  Testing Gemini API connection...\u001b[0m\n\u001b[32m✅ Gemini API key format appears valid\u001b[0m\n\u001b[36m\n🤖 Testing OpenRouter API\u001b[0m\n\u001b[36m==================================================\u001b[0m\n\u001b[32m✅ OpenRouter API connection successful\u001b[0m\n\u001b[34mℹ️  Available models: 322\u001b[0m\n\u001b[36m\n🗄️ Testing Database Schema\u001b[0m\n\u001b[36m==================================================\u001b[0m\n\u001b[32m✅ Table 'profiles' exists\u001b[0m\n\u001b[32m✅ Table 'presentations' exists\u001b[0m\n\u001b[32m✅ Table 'audio_files' exists\u001b[0m\n\u001b[32m✅ Table 'user_credits' exists\u001b[0m\n\u001b[36m\n🪣 Testing Supabase Storage\u001b[0m\n\u001b[36m==================================================\u001b[0m\n\u001b[33m⚠️  Storage accessible but audio-files bucket not found\u001b[0m\n\u001b[34mℹ️  Audio-files bucket may need to be created manually in Supabase Dashboard\u001b[0m\n\u001b[35m\n📊 Test Results Summary\u001b[0m\n\u001b[35m==================================================\u001b[0m\n\u001b[32m✅ environment: PASSED\u001b[0m\n\u001b[32m✅ supabase: PASSED\u001b[0m\n\u001b[32m✅ gemini: PASSED\u001b[0m\n\u001b[32m✅ openrouter: PASSED\u001b[0m\n\u001b[32m✅ database: PASSED\u001b[0m\n\u001b[32m✅ storage: PASSED\u001b[0m\n\u001b[32m\n6/6 tests passed\u001b[0m\n\u001b[32m✅ All tests passed! Your environment is ready.\u001b[0m\n",
+      "errorOutput": "",
+      "critical": true,
+      "timestamp": "2025-07-14T00:01:41.667Z"
+    },
+    {
+      "suite": "Audio Generation",
+      "script": "test-audio-generation.js",
+      "success": true,
+      "exitCode": 0,
+      "output": "\u001b[35m🎵 Presi5 Audio Generation Test Suite\u001b[0m\n\u001b[35m==================================================\u001b[0m\n\u001b[36m\n🔧 Audio System Diagnostics\u001b[0m\n\u001b[36m==================================================\u001b[0m\n\u001b[32m✅ Dependency @google/generative-ai available\u001b[0m\n\u001b[32m✅ Dependency mime-types available\u001b[0m\n\u001b[32m✅ Service file exists: ../app/services/gemini-tts.ts\u001b[0m\n\u001b[32m✅ Service file exists: ../app/services/html-converter.ts\u001b[0m\n\u001b[32m✅ Service file exists: ../app/services/audio-batch-generator.ts\u001b[0m\n\u001b[36m\n🎵 Testing Gemini TTS Service\u001b[0m\n\u001b[36m==================================================\u001b[0m\n\u001b[32m✅ Gemini API library loaded successfully\u001b[0m\n\u001b[34mℹ️  Gemini API key configured\u001b[0m\n\u001b[32m✅ Gemini API key format appears valid\u001b[0m\n\u001b[34mℹ️  Audio generation should work when app is running\u001b[0m\n\u001b[36m\n🔄 Testing HTML Converter Service\u001b[0m\n\u001b[36m==================================================\u001b[0m\n\u001b[32m✅ HTML converter service file exists\u001b[0m\n\u001b[32m✅ HTML conversion method found\u001b[0m\n\u001b[32m✅ Speech extraction method found\u001b[0m\n\u001b[32m✅ HTML converter service appears to be properly implemented\u001b[0m\n\u001b[34mℹ️  Full testing requires the application to be running\u001b[0m\n\u001b[36m\n🎶 Testing Audio Batch Generator\u001b[0m\n\u001b[36m==================================================\u001b[0m\n\u001b[32m✅ Audio batch generator service file exists\u001b[0m\n\u001b[32m✅ Audio generation method found\u001b[0m\n\u001b[32m✅ Audio file retrieval method found\u001b[0m\n\u001b[32m✅ Audio cleanup method found\u001b[0m\n\u001b[32m✅ Gemini TTS integration found\u001b[0m\n\u001b[32m✅ HTML converter integration found\u001b[0m\n\u001b[32m✅ Audio batch generator appears to be properly implemented\u001b[0m\n\u001b[34mℹ️  Full testing requires Supabase connection and running application\u001b[0m\n\u001b[36m\n🌐 Testing Audio API Endpoints\u001b[0m\n\u001b[36m==================================================\u001b[0m\n\u001b[32m✅ API file exists: ../app/api/generate-audio/route.ts\u001b[0m\n\u001b[32m✅ POST handler found in ../app/api/generate-audio/route.ts\u001b[0m\n\u001b[32m✅ API file exists: ../app/api/generate-presentation-audio/route.ts\u001b[0m\n\u001b[32m✅ POST handler found in ../app/api/generate-presentation-audio/route.ts\u001b[0m\n\u001b[36m\n🗄️ Testing Supabase Audio Integration\u001b[0m\n\u001b[36m==================================================\u001b[0m\n\u001b[32m✅ audio_files table accessible\u001b[0m\n\u001b[32m✅ Supabase storage accessible\u001b[0m\n\u001b[36m\n🔊 Testing Audio Playback Integration\u001b[0m\n\u001b[36m==================================================\u001b[0m\n\u001b[32m✅ PresentationViewer component found\u001b[0m\n\u001b[32m✅ Audio element usage found\u001b[0m\n\u001b[32m✅ Audio URL handling found\u001b[0m\n\u001b[32m✅ Audio playback method found\u001b[0m\n\u001b[34mℹ️  Audio end event handling not found\u001b[0m\n\u001b[32m✅ Audio playback integration detected\u001b[0m\n\u001b[35m\n📊 Audio Test Results Summary\u001b[0m\n\u001b[35m==================================================\u001b[0m\n\u001b[32m✅ geminiTTS: PASSED\u001b[0m\n\u001b[32m✅ htmlConverter: PASSED\u001b[0m\n\u001b[32m✅ audioBatchGenerator: PASSED\u001b[0m\n\u001b[32m✅ audioAPI: PASSED\u001b[0m\n\u001b[32m✅ supabaseIntegration: PASSED\u001b[0m\n\u001b[32m✅ audioPlayback: PASSED\u001b[0m\n\u001b[32m\n6/6 audio tests passed\u001b[0m\n\u001b[32m✅ All audio tests passed! Audio system is ready.\u001b[0m\n",
+      "errorOutput": "",
+      "critical": true,
+      "timestamp": "2025-07-14T00:01:42.244Z"
+    },
+    {
+      "suite": "Integration Tests",
+      "script": "test-integration.js",
+      "success": false,
+      "exitCode": 1,
+      "output": "\u001b[35m🧪 Presi5 Integration Test Suite\u001b[0m\n\u001b[35m==================================================\u001b[0m\n\u001b[34mℹ️  Testing against: http://localhost:3000\u001b[0m\n\u001b[34mℹ️  Test prompt: \"Create a short presentation about artificial intelligence benefits\"\u001b[0m\n\u001b[36m\n📋 Testing Models API\u001b[0m\n\u001b[36m==================================================\u001b[0m\n\u001b[34mℹ️  Testing models endpoint...\u001b[0m\n\u001b[32m✅ Models API successful: 61 models available\u001b[0m\n\u001b[34mℹ️  Free models count: 61\u001b[0m\n\u001b[32m✅ Model data format is correct\u001b[0m\n\u001b[34mℹ️  Sample model: moonshotai / kimi-k2 - free\u001b[0m\n\u001b[36m\n⚠️  Testing Error Handling\u001b[0m\n\u001b[36m==================================================\u001b[0m\n\u001b[34mℹ️  Testing: Empty prompt\u001b[0m\n\u001b[32m✅ Empty prompt: Handled correctly (401)\u001b[0m\n\u001b[34mℹ️  Testing: Invalid model\u001b[0m\n\u001b[32m✅ Invalid model: Handled correctly (401)\u001b[0m\n\u001b[34mℹ️  Testing: Missing presentation ID\u001b[0m\n\u001b[32m✅ Missing presentation ID: Handled correctly (401)\u001b[0m\n\u001b[36m\n🔄 Testing Complete Integration Flow\u001b[0m\n\u001b[36m==================================================\u001b[0m\n\u001b[34mℹ️  Step 1: Testing models availability...\u001b[0m\n\u001b[36m\n📋 Testing Models API\u001b[0m\n\u001b[36m==================================================\u001b[0m\n\u001b[34mℹ️  Testing models endpoint...\u001b[0m\n\u001b[32m✅ Models API successful: 61 models available\u001b[0m\n\u001b[34mℹ️  Free models count: 61\u001b[0m\n\u001b[32m✅ Model data format is correct\u001b[0m\n\u001b[34mℹ️  Sample model: moonshotai / kimi-k2 - free\u001b[0m\n\u001b[34mℹ️  Step 2: Generating presentation content...\u001b[0m\n\u001b[36m\n🤖 Testing Content Generation API\u001b[0m\n\u001b[36m==================================================\u001b[0m\n\u001b[34mℹ️  Testing content generation endpoint...\u001b[0m\n\u001b[31m❌ Content generation failed: 401 - Authentication required\u001b[0m\n\u001b[31m❌ Content generation failed - cannot proceed with audio generation\u001b[0m\n\u001b[35m\n📊 Integration Test Report\u001b[0m\n\u001b[35m==================================================\u001b[0m\n\u001b[34mℹ️  Test report saved to: /Users/aviz/presi5/tests/integration-test-report.json\u001b[0m\n\u001b[37m\nTest Summary:\u001b[0m\n\u001b[33m✅ Passed: 2/6 (33.3%)\u001b[0m\n\u001b[31m❌ Failed: 4\u001b[0m\n\u001b[31m❌ Integration tests failed. Check the report for details.\u001b[0m\n",
+      "errorOutput": "",
+      "critical": false,
+      "timestamp": "2025-07-14T00:01:42.714Z"
+    }
+  ],
+  "recommendations": [
+    "🔑 Set GEMINI_API_KEY in .env.local for audio generation",
+    "🔑 Set OPENROUTER_API_KEY in .env.local for content generation",
+    "🗄️ Configure Supabase credentials in .env.local",
+    "📈 Less than 80% tests passed - review failed tests"
+  ]
+}

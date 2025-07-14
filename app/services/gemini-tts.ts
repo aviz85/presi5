@@ -27,84 +27,110 @@ class GeminiTTSService {
     });
   }
 
-  async generateAudio(text: string, voiceName: string = 'Kore'): Promise<TTSResult> {
-    const config = {
-      temperature: 1,
-      responseModalities: ['audio'],
-      speechConfig: {
-        voiceConfig: {
-          prebuiltVoiceConfig: {
-            voiceName,
-          }
-        }
-      },
-    };
+  async generateAudio(text: string, voiceName: string = 'Zephyr'): Promise<TTSResult> {
+    // Validate input
+    if (!text || text.trim().length === 0) {
+      throw new Error('Text cannot be empty');
+    }
 
-    const contents = [
-      {
-        role: 'user' as const,
-        parts: [
-          {
-            text: text,
-          },
-        ],
-      },
-    ];
+    // Truncate very long text to avoid API limits
+    const maxLength = 5000;
+    const truncatedText = text.length > maxLength ? text.substring(0, maxLength) + '...' : text;
 
     try {
+      console.log(`🎵 Generating real audio for text: "${truncatedText.substring(0, 50)}..."`);
+      console.log(`🔊 Using voice: ${voiceName}`);
+      
+      const config = {
+        temperature: 1,
+        responseModalities: ['audio'],
+        speechConfig: {
+          voiceConfig: {
+            prebuiltVoiceConfig: {
+              voiceName: voiceName,
+            }
+          }
+        },
+      };
+
+      const contents = [
+        {
+          role: 'user',
+          parts: [
+            {
+              text: truncatedText,
+            },
+          ],
+        },
+      ];
+
       const response = await this.ai.models.generateContentStream({
         model: this.model,
         config,
         contents,
       });
 
+      let audioBuffer: Buffer | null = null;
+      let mimeType = 'audio/wav';
+      
       for await (const chunk of response) {
         if (!chunk.candidates || !chunk.candidates[0].content || !chunk.candidates[0].content.parts) {
           continue;
         }
-
-        const inlineData = chunk.candidates?.[0]?.content?.parts?.[0]?.inlineData;
-        if (inlineData) {
-          const fileName = `audio_${Date.now()}`;
-          let fileExtension = mime.getExtension(inlineData.mimeType || '');
+        
+        if (chunk.candidates?.[0]?.content?.parts?.[0]?.inlineData) {
+          const inlineData = chunk.candidates[0].content.parts[0].inlineData;
+          mimeType = inlineData.mimeType || 'audio/wav';
+          
           let buffer: Buffer = Buffer.from(inlineData.data || '', 'base64');
           
+          // Convert to WAV if needed
+          let fileExtension = mime.getExtension(mimeType);
           if (!fileExtension) {
             fileExtension = 'wav';
-            buffer = this.convertToWav(inlineData.data || '', inlineData.mimeType || '');
+            buffer = this.convertToWav(inlineData.data || '', mimeType);
+            mimeType = 'audio/wav';
           }
-
-          return {
-            audioBuffer: buffer,
-            fileName: `${fileName}.${fileExtension}`,
-            mimeType: inlineData.mimeType || 'audio/wav'
-          };
+          
+          audioBuffer = buffer;
+          break; // Take the first audio chunk
         }
       }
 
-      throw new Error('No audio data received from Gemini TTS');
+      if (!audioBuffer) {
+        throw new Error(`No audio data received from Gemini TTS for text: "${truncatedText.substring(0, 100)}..."`);
+      }
+
+      const fileName = `audio_${Date.now()}.wav`;
+      
+      console.log(`✅ Real audio generated: ${fileName} (${audioBuffer.length} bytes)`);
+      
+      return {
+        audioBuffer,
+        fileName,
+        mimeType
+      };
     } catch (error) {
-      console.error('Gemini TTS Error:', error);
+      console.error('🚨 Gemini TTS Error:', error);
       throw new Error(`Failed to generate audio: ${error instanceof Error ? error.message : 'Unknown error'}`);
     }
   }
 
-
-
   private convertToWav(rawData: string, mimeType: string): Buffer {
     const options = this.parseMimeType(mimeType);
-    const wavHeader = this.createWavHeader(rawData.length, options);
-    const buffer = Buffer.from(rawData, 'base64');
-
-    return Buffer.concat([wavHeader, buffer]);
+    const rawBuffer = Buffer.from(rawData, 'base64');
+    const wavHeader = this.createWavHeader(rawBuffer.length, options);
+    return Buffer.concat([wavHeader, rawBuffer]);
   }
 
   private parseMimeType(mimeType: string): WavConversionOptions {
     const [fileType, ...params] = mimeType.split(';').map(s => s.trim());
-    const [, format] = fileType.split('/');
+    const [_, format] = fileType.split('/');
 
     const options: Partial<WavConversionOptions> = {
       numChannels: 1,
+      sampleRate: 22050,
+      bitsPerSample: 16
     };
 
     if (format && format.startsWith('L')) {
@@ -125,11 +151,7 @@ class GeminiTTSService {
   }
 
   private createWavHeader(dataLength: number, options: WavConversionOptions): Buffer {
-    const {
-      numChannels,
-      sampleRate,
-      bitsPerSample,
-    } = options;
+    const { numChannels, sampleRate, bitsPerSample } = options;
 
     // http://soundfile.sapp.org/doc/WaveFormat
     const byteRate = sampleRate * numChannels * bitsPerSample / 8;
@@ -153,14 +175,12 @@ class GeminiTTSService {
     return buffer;
   }
 
-  // Get available voice options
   getAvailableVoices(): string[] {
     return [
+      'Zephyr',
       'Kore',
-      'Charon',
-      'Fenrir',
-      'Aoede',
-      'Puck'
+      'Aria',
+      'Charon'
     ];
   }
 }

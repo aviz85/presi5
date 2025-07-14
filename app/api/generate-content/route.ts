@@ -74,13 +74,14 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // Save the presentation to the database
+    // Save the presentation to the database (both structured content and original markdown)
     const { data: presentation, error: saveError } = await supabase
       .from('presentations')
       .insert({
         user_id: user.id,
         title: result.data.title,
         content: result.data as unknown as Json,
+        markdown_content: result.originalMarkdown || null, // Save original markdown
         audio_generated: false
       })
       .select()

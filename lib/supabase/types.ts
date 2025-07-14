@@ -56,6 +56,7 @@ export type Database = {
           user_id: string
           title: string
           content: Json
+          markdown_content: string | null
           created_at: string
           updated_at: string | null
           is_public: boolean
@@ -66,6 +67,7 @@ export type Database = {
           user_id: string
           title: string
           content: Json
+          markdown_content?: string | null
           created_at?: string
           updated_at?: string | null
           is_public?: boolean
@@ -76,6 +78,7 @@ export type Database = {
           user_id?: string
           title?: string
           content?: Json
+          markdown_content?: string | null
           created_at?: string
           updated_at?: string | null
           is_public?: boolean

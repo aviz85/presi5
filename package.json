@@ -6,10 +6,19 @@
     "dev": "next dev --turbopack",
     "build": "next build",
     "start": "next start",
-    "lint": "next lint"
+    "lint": "next lint",
+    "test:env": "node tests/test-environment.js",
+    "test:audio": "node tests/test-audio-generation.js",
+    "test:integration": "node tests/test-integration.js",
+    "test:quick-audio": "node tests/quick-audio-test.js",
+    "test:full-audio": "node tests/test-full-audio-flow.js",
+    "test:real-audio": "node tests/test-real-audio-generation.js",
+    "test:all": "node tests/run-all-tests.js",
+    "test": "npm run test:all"
   },
   "dependencies": {
     "@google/genai": "^1.9.0",
+    "@google/generative-ai": "^0.24.1",
     "@supabase/ssr": "^0.6.1",
     "@supabase/supabase-js": "^2.50.5",
     "marked": "^16.0.0",

@@ -1,0 +1,24 @@
+{
+  "timestamp": "2025-07-14T00:01:42.711Z",
+  "testConfig": {
+    "baseUrl": "http://localhost:3000",
+    "testPrompt": "Create a short presentation about artificial intelligence benefits",
+    "testModel": "qwen/qwen3-8b:free",
+    "timeout": 30000
+  },
+  "results": {
+    "modelsAPI": true,
+    "contentGeneration": false,
+    "audioGeneration": false,
+    "audioFileAccess": false,
+    "completeFlow": false,
+    "errorHandling": true
+  },
+  "environment": {
+    "nodeVersion": "v23.9.0",
+    "platform": "darwin",
+    "hasGeminiKey": false,
+    "hasOpenRouterKey": false,
+    "hasSupabaseConfig": false
+  }
+}

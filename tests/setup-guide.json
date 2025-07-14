@@ -1,0 +1,42 @@
+{
+  "title": "Presi5 Setup Guide",
+  "timestamp": "2025-07-14T00:01:42.716Z",
+  "steps": [
+    {
+      "step": 1,
+      "title": "Create Environment Configuration",
+      "commands": [
+        "cp env.example .env.local",
+        "nano .env.local  # Edit with your API keys"
+      ],
+      "description": "Copy the example environment file and add your API keys"
+    },
+    {
+      "step": 2,
+      "title": "Verify Installation",
+      "commands": [
+        "npm install",
+        "npm run test:all"
+      ],
+      "description": "Ensure all dependencies are installed and tests pass"
+    }
+  ],
+  "troubleshooting": [
+    {
+      "issue": "Audio generation fails",
+      "solution": "Ensure GEMINI_API_KEY is set and valid"
+    },
+    {
+      "issue": "Content generation fails",
+      "solution": "Ensure OPENROUTER_API_KEY is set and valid"
+    },
+    {
+      "issue": "Database errors",
+      "solution": "Run the SQL schema in your Supabase project"
+    },
+    {
+      "issue": "Storage errors",
+      "solution": "Create audio-files bucket in Supabase Storage"
+    }
+  ]
+}

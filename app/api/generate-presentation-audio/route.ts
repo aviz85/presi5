@@ -46,7 +46,8 @@ export async function POST(request: NextRequest) {
     const audioGenerator = new AudioBatchGenerator()
     const result = await audioGenerator.generatePresentationAudio(content, 'Kore', user.id)
 
-    if (result.status === 'error') {
+    // If completely failed (no successful files), return error
+    if (result.status === 'error' && result.audioFiles.length === 0) {
       return NextResponse.json(
         { success: false, error: result.error },
         { status: 500 }
@@ -94,10 +95,17 @@ export async function POST(request: NextRequest) {
 
     console.log('✅ Audio generation completed:', audioFiles.length, 'files')
 
+    // Prepare response message
+    let message = `Generated ${audioFiles.length} audio files`;
+    if (result.error) {
+      message += ` (${result.error})`;
+    }
+
     return NextResponse.json({
       success: true,
       audioFiles,
-      message: `Generated ${audioFiles.length} audio files`
+      message,
+      partialFailure: result.error ? true : false
     })
 
   } catch (error) {

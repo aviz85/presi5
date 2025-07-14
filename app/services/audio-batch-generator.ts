@@ -48,65 +48,79 @@ class AudioBatchGenerator {
       console.log(`🎵 Generating ${elementSpeechContent.length} audio files for presentation ${presentationId}`);
 
       // Generate audio for each speech element
+      let successCount = 0;
+      let failureCount = 0;
+      
       for (let i = 0; i < elementSpeechContent.length; i++) {
         const elementContent = elementSpeechContent[i];
         
         if (elementContent.speechText.trim()) {
           console.log(`🔊 Generating audio for element ${elementContent.elementId}: "${elementContent.speechText.substring(0, 50)}..."`);
 
-          // Generate audio using Gemini TTS
-          const audioResult = await this.ttsService.generateAudio(
-            elementContent.speechText,
-            voiceName
-          );
+          try {
+            // Generate audio using Gemini TTS
+            const audioResult = await this.ttsService.generateAudio(
+              elementContent.speechText,
+              voiceName
+            );
 
-          // Create file path in Supabase Storage
-          const fileName = `${elementContent.slideId}-${elementContent.elementId}.wav`;
-          const filePath = `${userId}/${presentationId}/${fileName}`;
+            // Create file path in Supabase Storage
+            const fileName = `${elementContent.slideId}-${elementContent.elementId}.wav`;
+            const filePath = `${userId}/${presentationId}/${fileName}`;
 
-          // Upload to Supabase Storage
-          const { error: uploadError } = await supabase.storage
-            .from('audio-files')
-            .upload(filePath, audioResult.audioBuffer, {
-              contentType: audioResult.mimeType,
-              upsert: true
+            // Upload to Supabase Storage
+            const { error: uploadError } = await supabase.storage
+              .from('audio-files')
+              .upload(filePath, audioResult.audioBuffer, {
+                contentType: audioResult.mimeType,
+                upsert: true
+              });
+
+            if (uploadError) {
+              console.error(`❌ Failed to upload audio file ${fileName}:`, uploadError);
+              failureCount++;
+              continue; // Skip this file but continue with others
+            }
+
+            // Get public URL for the uploaded file
+            const { data: { publicUrl } } = supabase.storage
+              .from('audio-files')
+              .getPublicUrl(filePath);
+
+            // Estimate duration (rough calculation: 150 words per minute)
+            const wordCount = elementContent.speechText.split(/\s+/).length;
+            const estimatedDuration = Math.max(2, (wordCount / 150) * 60); // minimum 2 seconds
+
+            audioFiles.push({
+              slideId: elementContent.slideId,
+              elementId: elementContent.elementId,
+              elementOrder: elementContent.order,
+              audioPath: filePath,
+              audioUrl: publicUrl,
+              duration: estimatedDuration
             });
 
-          if (uploadError) {
-            console.error(`❌ Failed to upload audio file ${fileName}:`, uploadError);
-            throw new Error(`Failed to upload audio file: ${uploadError.message}`);
+            totalDuration += estimatedDuration;
+            successCount++;
+            console.log(`✅ Audio file uploaded: ${fileName} (${estimatedDuration.toFixed(1)}s)`);
+            
+          } catch (error) {
+            console.error(`❌ Failed to generate audio for element ${elementContent.elementId}:`, error);
+            failureCount++;
+            // Continue with next element instead of throwing
+            continue;
           }
-
-          // Get public URL for the uploaded file
-          const { data: { publicUrl } } = supabase.storage
-            .from('audio-files')
-            .getPublicUrl(filePath);
-
-          // Estimate duration (rough calculation: 150 words per minute)
-          const wordCount = elementContent.speechText.split(/\s+/).length;
-          const estimatedDuration = Math.max(2, (wordCount / 150) * 60); // minimum 2 seconds
-
-          audioFiles.push({
-            slideId: elementContent.slideId,
-            elementId: elementContent.elementId,
-            elementOrder: elementContent.order,
-            audioPath: filePath,
-            audioUrl: publicUrl,
-            duration: estimatedDuration
-          });
-
-          totalDuration += estimatedDuration;
-          console.log(`✅ Audio file uploaded: ${fileName} (${estimatedDuration.toFixed(1)}s)`);
         }
       }
 
-      console.log(`🎉 Audio generation completed: ${audioFiles.length} files, total duration: ${totalDuration.toFixed(1)}s`);
+      console.log(`🎉 Audio generation completed: ${successCount} successful, ${failureCount} failed, total duration: ${totalDuration.toFixed(1)}s`);
 
       return {
         presentationId,
         audioFiles,
         totalDuration,
-        status: 'success'
+        status: successCount > 0 ? 'success' : 'error', // Success if at least one file was generated
+        error: failureCount > 0 ? `${failureCount} audio files failed to generate` : undefined
       };
 
     } catch (error) {

@@ -60,6 +60,7 @@ export default function PresentationViewer({ content, onBack, audioFiles = [] }:
   const [currentElementIndex, setCurrentElementIndex] = useState(-1);
   const [allElements, setAllElements] = useState<CombinedElement[]>([]);
   const [htmlPresentation, setHtmlPresentation] = useState<HTMLPresentation | null>(null);
+  const [visibleElements, setVisibleElements] = useState<Set<string>>(new Set());
   
   const audioRef = useRef<HTMLAudioElement>(null);
 
@@ -124,32 +125,60 @@ export default function PresentationViewer({ content, onBack, audioFiles = [] }:
     }
 
     if (currentElement.elementType === 'visual') {
-      // For visual elements, wait for animation delay + 2 seconds, then move to next
-      const delay = currentElement.animationDelay + 2000;
+      // Show the visual element immediately
+      setVisibleElements(prev => new Set(prev).add(currentElement.id));
+      
+      // Wait for animation to complete, then move to next element (speech)
+      const animationDuration = 800; // Standard animation duration
       const timer = setTimeout(() => {
         setCurrentElementIndex(prev => prev + 1);
-      }, delay);
+      }, animationDuration);
+      
       return () => clearTimeout(timer);
+      
     } else if (currentElement.elementType === 'speech') {
       // For speech elements, play audio immediately
-      const playAudio = async (elementId: string) => {
-        if (!audioRef.current) return;
+      const playAudio = async () => {
+        if (!audioRef.current) {
+          // If no audio available, just wait a moment then continue
+          setTimeout(() => {
+            setCurrentElementIndex(prev => prev + 1);
+          }, 1000);
+          return;
+        }
 
         setIsAudioLoading(true);
         try {
-          const audioFile = audioFiles.find(file => file.elementId === elementId);
+          // Find audio file by element ID or by order
+          const audioFile = audioFiles.find(file => 
+            file.elementId === currentElement.id || 
+            file.elementOrder === currentElement.order
+          );
+          
           if (audioFile && audioFile.audioUrl) {
+            console.log(`🔊 Playing audio for element ${currentElement.id}: ${audioFile.audioUrl}`);
             audioRef.current.src = audioFile.audioUrl;
             await audioRef.current.play();
+            // Audio will end and trigger handleAudioEnded
+          } else {
+            console.log(`⚠️ No audio found for element ${currentElement.id}, continuing...`);
+            // No audio available, continue after a short pause
+            setTimeout(() => {
+              setCurrentElementIndex(prev => prev + 1);
+            }, 1500);
           }
         } catch (error) {
           console.error('Error playing audio:', error);
+          // Continue even if audio fails
+          setTimeout(() => {
+            setCurrentElementIndex(prev => prev + 1);
+          }, 1000);
         } finally {
           setIsAudioLoading(false);
         }
       };
       
-      playAudio(currentElement.id);
+      playAudio();
     }
   }, [currentElementIndex, isPlaying, allElements, currentSlide, htmlPresentation, audioFiles]);
 
@@ -169,11 +198,13 @@ export default function PresentationViewer({ content, onBack, audioFiles = [] }:
     setIsPlaying(true);
     setCurrentElementIndex(0);
     setCurrentSlide(0);
+    setVisibleElements(new Set());
   };
 
   const stopPresentation = () => {
     setIsPlaying(false);
     setCurrentElementIndex(-1);
+    setVisibleElements(new Set());
     if (audioRef.current) {
       audioRef.current.pause();
       audioRef.current.currentTime = 0;
@@ -181,6 +212,7 @@ export default function PresentationViewer({ content, onBack, audioFiles = [] }:
   };
 
   const handleAudioEnded = () => {
+    console.log('🎵 Audio ended, moving to next element');
     // Move to next element when audio ends
     setCurrentElementIndex(prev => prev + 1);
   };
@@ -232,6 +264,12 @@ export default function PresentationViewer({ content, onBack, audioFiles = [] }:
               ⏸️ Pause
             </button>
           )}
+          
+          {isPlaying && (
+            <div className="text-white text-sm">
+              Element: {currentElementIndex + 1} / {allElements.length}
+            </div>
+          )}
         </div>
       </div>
 
@@ -242,18 +280,14 @@ export default function PresentationViewer({ content, onBack, audioFiles = [] }:
             {allElements
               .filter(el => el.elementType === 'visual' && el.slideId === htmlPresentation?.slides[currentSlide]?.id)
               .map((element) => {
-                const elementGlobalIndex = allElements.findIndex(el => el.id === element.id);
-                const isVisible = !isPlaying || elementGlobalIndex <= currentElementIndex;
+                const isVisible = !isPlaying || visibleElements.has(element.id);
                 
                 return (
                   <div
                     key={element.id}
-                    className={`mb-6 transition-all duration-500 ${
+                    className={`mb-6 transition-all duration-800 ${
                       isVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4'
-                    } ${element.animationClass}`}
-                    style={{
-                      animationDelay: isPlaying ? `${element.animationDelay}ms` : '0ms'
-                    }}
+                    } ${isVisible ? element.animationClass : ''}`}
                   >
                     {element.type === 'title' && (
                       <h1 className="text-4xl font-bold text-gray-800 text-center mb-8">

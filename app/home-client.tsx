@@ -97,8 +97,13 @@ export default function HomeClient({ user, profile }: HomeClientProps) {
       if (result.success) {
         setPresentationData(result.data)
         setPresentationId(result.presentation_id)
-        // Auto-generate audio after content is ready
-        await generateAudio(result.presentation_id)
+        // Auto-generate audio after content is ready - pass the data directly
+        try {
+          await generateAudioWithData(result.presentation_id, result.data)
+        } catch (audioError) {
+          console.error('❌ Audio generation failed:', audioError)
+          // Don't set error state for audio failures - let user continue without audio
+        }
       } else {
         setError(result.error || 'Failed to generate content')
       }
@@ -112,8 +117,14 @@ export default function HomeClient({ user, profile }: HomeClientProps) {
 
   const generateAudio = async (presentationId: string) => {
     if (!presentationData) return
+    await generateAudioWithData(presentationId, presentationData)
+  }
 
+  const generateAudioWithData = async (presentationId: string, content: PresentationContent) => {
     setIsGeneratingAudio(true)
+    console.log('🎵 Starting audio generation for presentation:', presentationId)
+    console.log('📊 Content data:', { title: content.title, slides: content.slides.length })
+    
     try {
       const response = await fetch('/api/generate-presentation-audio', {
         method: 'POST',
@@ -122,21 +133,24 @@ export default function HomeClient({ user, profile }: HomeClientProps) {
         },
         body: JSON.stringify({ 
           presentationId,
-          content: presentationData 
+          content 
         }),
       })
 
+      console.log('📡 Audio API response status:', response.status)
       const result: AudioResponse = await response.json()
+      console.log('📋 Audio API response:', result)
 
       if (result.success && result.audioFiles) {
+        console.log('✅ Audio generation successful:', result.audioFiles.length, 'files')
         setAudioFiles(result.audioFiles)
       } else {
-        console.error('Audio generation failed:', result.error)
-        setError(result.error || 'Failed to generate audio')
+        console.error('❌ Audio generation failed:', result.error)
+        // Don't set error state - let user continue without audio
       }
     } catch (err) {
-      console.error('Audio generation error:', err)
-      setError('Failed to generate audio files')
+      console.error('❌ Audio generation error:', err)
+      // Don't set error state - let user continue without audio
     } finally {
       setIsGeneratingAudio(false)
     }
@@ -147,6 +161,7 @@ export default function HomeClient({ user, profile }: HomeClientProps) {
       <PresentationViewer 
         content={presentationData} 
         onBack={() => setShowViewer(false)}
+        audioFiles={audioFiles}
       />
     )
   }

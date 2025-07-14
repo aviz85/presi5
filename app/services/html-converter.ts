@@ -61,8 +61,9 @@ class HTMLConverterService {
 
     slide.elements.forEach((element, elementIndex) => {
       if (element.type === 'speech') {
+        // Use the same ID format as MarkdownParser
         speechElements.push({
-          id: `slide-${slideIndex}-speech-${elementIndex}`,
+          id: element.id, // Use the original ID from MarkdownParser
           type: 'content',
           content: element.content,
           animationClass: '',
@@ -70,8 +71,9 @@ class HTMLConverterService {
           order: element.order
         });
       } else {
+        // Use the same ID format as MarkdownParser
         elements.push({
-          id: `slide-${slideIndex}-element-${elementIndex}`,
+          id: element.id, // Use the original ID from MarkdownParser
           type: element.type as 'title' | 'subtitle' | 'content' | 'bullet-list' | 'bullet-point',
           content: this.formatContent(element),
           animationClass: element.animation,
