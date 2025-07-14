@@ -1,0 +1,23 @@
+{
+  "enabled": true,
+  "name": "Pre-commit Build Check",
+  "description": "Automatically runs build process before commits to detect and fix compilation errors, type issues, and other build problems",
+  "version": "1",
+  "when": {
+    "type": "fileEdited",
+    "patterns": [
+      "app/**/*.tsx",
+      "app/**/*.ts",
+      "lib/**/*.ts",
+      "*.ts",
+      "*.tsx",
+      "package.json",
+      "tsconfig.json",
+      "next.config.ts"
+    ]
+  },
+  "then": {
+    "type": "askAgent",
+    "prompt": "The user is about to commit changes to TypeScript/Next.js files. Run `npm run build` to check for any compilation errors, type issues, or build problems. If there are any errors, analyze them and provide specific fixes. If the build succeeds, confirm that the code is ready for commit."
+  }
+}

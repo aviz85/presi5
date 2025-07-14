@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 
 interface InputInterfaceProps {
   onGenerate: (prompt: string, model: string) => Promise<void>;
@@ -21,11 +21,7 @@ export default function InputInterface({ onGenerate, isGenerating, error, disabl
   const [availableModels, setAvailableModels] = useState<ModelOption[]>([]);
   const [loadingModels, setLoadingModels] = useState(true);
 
-  useEffect(() => {
-    fetchAvailableModels();
-  }, []);
-
-  const fetchAvailableModels = async () => {
+  const fetchAvailableModels = useCallback(async () => {
     try {
       const response = await fetch('/api/models?free=true&format=select');
       const data = await response.json();
@@ -50,7 +46,11 @@ export default function InputInterface({ onGenerate, isGenerating, error, disabl
     } finally {
       setLoadingModels(false);
     }
-  };
+  }, []);
+
+  useEffect(() => {
+    fetchAvailableModels();
+  }, [fetchAvailableModels]);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();

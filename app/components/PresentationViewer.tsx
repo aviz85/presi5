@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { PresentationContent } from '../services/content-generator';
 import HTMLConverterService from '../services/html-converter';
 
@@ -88,7 +88,7 @@ export default function PresentationViewer({ content, onBack, audioFiles = [], a
       console.log('🚀 Auto-starting presentation...');
       startPresentation();
     }
-  }, [autoStart, htmlPresentation, isPlaying]);
+  }, [autoStart, htmlPresentation, isPlaying, startPresentation]);
 
   // Convert presentation to HTML format and organize elements by slide
   useEffect(() => {
@@ -145,8 +145,19 @@ export default function PresentationViewer({ content, onBack, audioFiles = [], a
 
   // Handle element progression during presentation - now slide-aware
   useEffect(() => {
+    let visualTimer: NodeJS.Timeout | null = null;
+    let audioEventListeners: (() => void)[] = [];
+    let audioTimeouts: NodeJS.Timeout[] = [];
+
     if (!isPlaying || currentSlide === -1 || currentSlideElementIndex === -1 || slideElements.length === 0) {
-      return;
+      return () => {
+        // Cleanup function always returned
+        if (visualTimer) {
+          clearTimeout(visualTimer);
+        }
+        audioEventListeners.forEach(cleanup => cleanup());
+        audioTimeouts.forEach(timeout => clearTimeout(timeout));
+      };
     }
 
     const currentSlideData = slideElements[currentSlide];
@@ -161,7 +172,14 @@ export default function PresentationViewer({ content, onBack, audioFiles = [], a
         console.log('🎉 Presentation completed!');
         stopPresentation();
       }
-      return;
+      return () => {
+        // Cleanup function always returned
+        if (visualTimer) {
+          clearTimeout(visualTimer);
+        }
+        audioEventListeners.forEach(cleanup => cleanup());
+        audioTimeouts.forEach(timeout => clearTimeout(timeout));
+      };
     }
 
     const currentElement = currentSlideData.elements[currentSlideElementIndex];
@@ -176,7 +194,7 @@ export default function PresentationViewer({ content, onBack, audioFiles = [], a
       const animationDuration = 800; // Standard animation duration
       console.log(`⏱️ Starting ${animationDuration}ms timer for visual element ${currentElement.id}`);
       
-      const timer = setTimeout(() => {
+      visualTimer = setTimeout(() => {
         console.log(`⏰ Animation timer finished for ${currentElement.id}, moving to next element`);
         setCurrentSlideElementIndex(prev => {
           const nextIndex = prev + 1;
@@ -185,19 +203,15 @@ export default function PresentationViewer({ content, onBack, audioFiles = [], a
         });
       }, animationDuration);
       
-      return () => {
-        console.log(`🧹 Cleaning up timer for visual element ${currentElement.id}`);
-        clearTimeout(timer);
-      };
-      
     } else if (currentElement.elementType === 'speech') {
       // For speech elements, play audio immediately
       const playAudio = async () => {
         if (!audioRef.current) {
           console.log('⚠️ No audio element available, continuing...');
-          setTimeout(() => {
+          const timeout = setTimeout(() => {
             setCurrentSlideElementIndex(prev => prev + 1);
           }, 1000);
+          audioTimeouts.push(timeout);
           return;
         }
 
@@ -217,22 +231,33 @@ export default function PresentationViewer({ content, onBack, audioFiles = [], a
             audioRef.current.currentTime = 0;
             audioRef.current.src = audioFile.audioUrl;
             
-            // Add event listeners for debugging
+            // Add event listeners for debugging with proper cleanup tracking
             const onLoadStart = () => console.log(`📥 Audio loading started for ${currentElement.id}`);
             const onCanPlay = () => console.log(`✅ Audio can play for ${currentElement.id}`);
             const onPlay = () => console.log(`▶️ Audio started playing for ${currentElement.id}`);
             const onError = (e: ErrorEvent) => {
               console.error(`❌ Audio error for ${currentElement.id}:`, e);
               // Continue to next element on error
-              setTimeout(() => {
+              const timeout = setTimeout(() => {
                 setCurrentSlideElementIndex(prev => prev + 1);
               }, 500);
+              audioTimeouts.push(timeout);
             };
             
             audioRef.current.addEventListener('loadstart', onLoadStart);
             audioRef.current.addEventListener('canplay', onCanPlay);
             audioRef.current.addEventListener('play', onPlay);
             audioRef.current.addEventListener('error', onError);
+            
+            // Store cleanup functions for proper removal
+            audioEventListeners.push(() => {
+              if (audioRef.current) {
+                audioRef.current.removeEventListener('loadstart', onLoadStart);
+                audioRef.current.removeEventListener('canplay', onCanPlay);
+                audioRef.current.removeEventListener('play', onPlay);
+                audioRef.current.removeEventListener('error', onError);
+              }
+            });
             
             // Try to play the audio
             await audioRef.current.play();
@@ -260,8 +285,9 @@ export default function PresentationViewer({ content, onBack, audioFiles = [], a
               checkAudioDuration();
               
               // Also check after a short delay in case duration loads later
-              setTimeout(checkAudioDuration, 500);
-              setTimeout(checkAudioDuration, 1000);
+              const timeout1 = setTimeout(checkAudioDuration, 500);
+              const timeout2 = setTimeout(checkAudioDuration, 1000);
+              audioTimeouts.push(timeout1, timeout2);
             }
             
             console.log(`⏱️ Setting fallback timer for ${fallbackDuration}ms for element ${currentElement.id}`);
@@ -270,30 +296,22 @@ export default function PresentationViewer({ content, onBack, audioFiles = [], a
               setCurrentSlideElementIndex(prev => prev + 1);
             }, fallbackDuration);
             
-            // Clean up event listeners after a delay
-            setTimeout(() => {
-              if (audioRef.current) {
-                audioRef.current.removeEventListener('loadstart', onLoadStart);
-                audioRef.current.removeEventListener('canplay', onCanPlay);
-                audioRef.current.removeEventListener('play', onPlay);
-                audioRef.current.removeEventListener('error', onError);
-              }
-            }, 1000);
-            
             // Audio will end and trigger handleAudioEnded
           } else {
             console.log(`⚠️ No audio found for element ${currentElement.id}, continuing...`);
             // No audio available, continue after a short pause
-            setTimeout(() => {
+            const timeout = setTimeout(() => {
               setCurrentSlideElementIndex(prev => prev + 1);
             }, 1500);
+            audioTimeouts.push(timeout);
           }
         } catch (error) {
           console.error('Error playing audio:', error);
           // Continue even if audio fails
-          setTimeout(() => {
+          const timeout = setTimeout(() => {
             setCurrentSlideElementIndex(prev => prev + 1);
           }, 1000);
+          audioTimeouts.push(timeout);
         } finally {
           setIsAudioLoading(false);
         }
@@ -301,7 +319,22 @@ export default function PresentationViewer({ content, onBack, audioFiles = [], a
       
       playAudio();
     }
-  }, [currentSlideElementIndex, currentSlide, isPlaying, slideElements, audioFiles]);
+
+    // Cleanup function always returned
+    return () => {
+      console.log(`🧹 Cleaning up timers and listeners for element ${currentElement?.id || 'unknown'}`);
+      if (visualTimer) {
+        clearTimeout(visualTimer);
+      }
+      // Also clean up fallback timer if it exists
+      if (fallbackTimerRef.current) {
+        clearTimeout(fallbackTimerRef.current);
+        fallbackTimerRef.current = null;
+      }
+      audioEventListeners.forEach(cleanup => cleanup());
+      audioTimeouts.forEach(timeout => clearTimeout(timeout));
+    };
+  }, [currentSlideElementIndex, currentSlide, isPlaying, slideElements, audioFiles, stopPresentation]);
 
   const nextSlide = () => {
     if (currentSlide < (htmlPresentation?.slides.length || 0) - 1) {
@@ -317,14 +350,14 @@ export default function PresentationViewer({ content, onBack, audioFiles = [], a
     }
   };
 
-  const startPresentation = async () => {
+  const startPresentation = useCallback(async () => {
     setIsPlaying(true);
     setCurrentSlide(0);
     setCurrentSlideElementIndex(0);
     setVisibleElements(new Set());
-  };
+  }, []);
 
-  const stopPresentation = () => {
+  const stopPresentation = useCallback(() => {
     setIsPlaying(false);
     setCurrentSlideElementIndex(-1);
     setVisibleElements(new Set());
@@ -339,7 +372,7 @@ export default function PresentationViewer({ content, onBack, audioFiles = [], a
       audioRef.current.pause();
       audioRef.current.currentTime = 0;
     }
-  };
+  }, []);
 
   const handleAudioEnded = () => {
     console.log('🎵 Audio ended, moving to next element in current slide');
